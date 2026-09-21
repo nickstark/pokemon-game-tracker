@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sword & Shield Pokedex Tracker</title>
+<style>
+  :root {
+    --bg: #f4f5f7;
+    --card-bg: #ffffff;
+    --text: #1c1e21;
+    --text-dim: #6b7280;
+    --accent: #d64545;
+    --accent-2: #3a7bd5;
+    --caught-bg: #e6f7ec;
+    --caught-border: #34a853;
+    --border: #e2e4e8;
+    --header-bg: #d64545;
+    --header-text: #ffffff;
+    --chip-bg: #eef0f3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16181c;
+      --card-bg: #23262c;
+      --text: #f0f1f3;
+      --text-dim: #9aa0a8;
+      --accent: #ff6b6b;
+      --accent-2: #5b9bff;
+      --caught-bg: #123421;
+      --caught-border: #34a853;
+      --border: #33363d;
+      --header-bg: #7a1f1f;
+      --header-text: #ffffff;
+      --chip-bg: #2c2f36;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding-bottom: 60px;
+  }
+  header {
+    background: var(--header-bg);
+    color: var(--header-text);
+    padding: 16px 16px 12px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  }
+  header h1 {
+    margin: 0 0 2px;
+    font-size: 1.25rem;
+  }
+  header .sub {
+    font-size: 0.8rem;
+    opacity: 0.9;
+  }
+  .progress-wrap {
+    margin-top: 10px;
+    background: rgba(255,255,255,0.25);
+    border-radius: 8px;
+    height: 10px;
+    overflow: hidden;
+  }
+  .progress-bar {
+    height: 100%;
+    background: #ffffff;
+    transition: width 0.3s ease;
+  }
+  .progress-text {
+    font-size: 0.75rem;
+    margin-top: 4px;
+    text-align: right;
+    opacity: 0.9;
+  }
+  .controls {
+    display: flex;
+    gap: 8px;
+    padding: 10px 16px;
+    background: var(--bg);
+    position: sticky;
+    top: 78px;
+    z-index: 9;
+    flex-wrap: wrap;
+  }
+  .controls input[type="search"] {
+    flex: 1;
+    min-width: 140px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    color: var(--text);
+    font-size: 0.9rem;
+  }
+  .controls select {
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    color: var(--text);
+    font-size: 0.85rem;
+  }
+  .controls button.toggle-all {
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    color: var(--text);
+    font-size: 0.8rem;
+  }
+  main {
+    padding: 0 12px;
+  }
+  .section {
+    margin-top: 18px;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 6px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .section-header h2 {
+    font-size: 1.05rem;
+    margin: 0;
+  }
+  .section-header .count {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+  }
+  .section-header .chevron {
+    transition: transform 0.2s ease;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-left: 8px;
+  }
+  .section.collapsed .chevron {
+    transform: rotate(-90deg);
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+    gap: 8px;
+    padding-bottom: 4px;
+  }
+  .section.collapsed .grid {
+    display: none;
+  }
+  .card {
+    background: var(--card-bg);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 6px 4px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+    position: relative;
+  }
+  .card.caught {
+    background: var(--caught-bg);
+    border-color: var(--caught-border);
+  }
+  .card.hidden { display: none; }
+  .card img {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+    filter: grayscale(1);
+    opacity: 0.55;
+  }
+  .card.caught img {
+    filter: none;
+    opacity: 1;
+  }
+  .card .name {
+    font-size: 0.68rem;
+    margin-top: 2px;
+    line-height: 1.1;
+    word-break: break-word;
+  }
+  .card .num {
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    position: absolute;
+    top: 3px;
+    left: 5px;
+  }
+  .card .check {
+    position: absolute;
+    top: 3px;
+    right: 5px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid var(--text-dim);
+    background: transparent;
+  }
+  .card.caught .check {
+    background: var(--caught-border);
+    border-color: var(--caught-border);
+  }
+  footer {
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    padding: 20px 16px 8px;
+  }
+
+  .badge {
+    position: absolute;
+    bottom: 3px;
+    left: 3px;
+    font-size: 0.55rem;
+    font-weight: 700;
+    padding: 1px 4px;
+    border-radius: 4px;
+    color: #fff;
+    letter-spacing: 0.02em;
+  }
+  .badge.sword { background: #4a6fa5; }
+  .badge.shield { background: #a54a4a; }
+  .badge.split { background: #8a6dbb; }
+  .legend {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    padding: 0 16px 8px;
+  }
+  .legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .legend .dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 3px;
+    display: inline-block;
+  }
+  .legend .dot.sword { background: #4a6fa5; }
+  .legend .dot.shield { background: #a54a4a; }
+  .legend .dot.split { background: #8a6dbb; }
+
+  .reset-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    margin-top: 6px;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Pokemon Sword &amp; Shield</h1>
+  <div class="sub">Galar Dex catch tracker</div>
+  <div class="progress-wrap"><div class="progress-bar" id="progressBar" style="width:0%"></div></div>
+  <div class="progress-text" id="progressText">0 / 0 caught</div>
+</header>
+
+<div class="legend">
+  <span><span class="dot sword"></span> Sword exclusive</span>
+  <span><span class="dot shield"></span> Shield exclusive</span>
+  <span><span class="dot split"></span> Form varies by version</span>
+</div>
+
+<div class="controls">
+  <input type="search" id="searchBox" placeholder="Search Pokemon...">
+  <select id="filterSelect">
+    <option value="all">All</option>
+    <option value="caught">Caught</option>
+    <option value="uncaught">Not caught</option>
+    <option value="sword">Sword exclusive</option>
+    <option value="shield">Shield exclusive</option>
+  </select>
+</div>
+
+<main id="main"></main>
+
+<footer>
+  Data &amp; sprites from <a href="https://pokemondb.net/pokedex/game/sword-shield" target="_blank" rel="noopener">pokemondb.net</a>. Progress is saved on this device only.
+  <br>
+  <button class="reset-btn" id="resetBtn">Reset all progress</button>
+</footer>
+
+<script>
+const DATA = {"species":{"grookey":{"n":"Grookey","i":"https://img.pokemondb.net/sprites/home/normal/2x/grookey.jpg","t":["Grass"]},"thwackey":{"n":"Thwackey","i":"https://img.pokemondb.net/sprites/home/normal/2x/thwackey.jpg","t":["Grass"]},"rillaboom":{"n":"Rillaboom","i":"https://img.pokemondb.net/sprites/home/normal/2x/rillaboom.jpg","t":["Grass"]},"scorbunny":{"n":"Scorbunny","i":"https://img.pokemondb.net/sprites/home/normal/2x/scorbunny.jpg","t":["Fire"]},"raboot":{"n":"Raboot","i":"https://img.pokemondb.net/sprites/home/normal/2x/raboot.jpg","t":["Fire"]},"cinderace":{"n":"Cinderace","i":"https://img.pokemondb.net/sprites/home/normal/2x/cinderace.jpg","t":["Fire"]},"sobble":{"n":"Sobble","i":"https://img.pokemondb.net/sprites/home/normal/2x/sobble.jpg","t":["Water"]},"drizzile":{"n":"Drizzile","i":"https://img.pokemondb.net/sprites/home/normal/2x/drizzile.jpg","t":["Water"]},"inteleon":{"n":"Inteleon","i":"https://img.pokemondb.net/sprites/home/normal/2x/inteleon.jpg","t":["Water"]},"blipbug":{"n":"Blipbug","i":"https://img.pokemondb.net/sprites/home/normal/2x/blipbug.jpg","t":["Bug"]},"dottler":{"n":"Dottler","i":"https://img.pokemondb.net/sprites/home/normal/2x/dottler.jpg","t":["Bug","Psychic"]},"orbeetle":{"n":"Orbeetle","i":"https://img.pokemondb.net/sprites/home/normal/2x/orbeetle.jpg","t":["Bug","Psychic"]},"caterpie":{"n":"Caterpie","i":"https://img.pokemondb.net/sprites/home/normal/2x/caterpie.jpg","t":["Bug"]},"metapod":{"n":"Metapod","i":"https://img.pokemondb.net/sprites/home/normal/2x/metapod.jpg","t":["Bug"]},"butterfree":{"n":"Butterfree","i":"https://img.pokemondb.net/sprites/home/normal/2x/butterfree.jpg","t":["Bug","Flying"]},"grubbin":{"n":"Grubbin","i":"https://img.pokemondb.net/sprites/home/normal/2x/grubbin.jpg","t":["Bug"]},"charjabug":{"n":"Charjabug","i":"https://img.pokemondb.net/sprites/home/normal/2x/charjabug.jpg","t":["Bug","Electric"]},"vikavolt":{"n":"Vikavolt","i":"https://img.pokemondb.net/sprites/home/normal/2x/vikavolt.jpg","t":["Bug","Electric"]},"hoothoot":{"n":"Hoothoot","i":"https://img.pokemondb.net/sprites/home/normal/2x/hoothoot.jpg","t":["Normal","Flying"]},"noctowl":{"n":"Noctowl","i":"https://img.pokemondb.net/sprites/home/normal/2x/noctowl.jpg","t":["Normal","Flying"]},"rookidee":{"n":"Rookidee","i":"https://img.pokemondb.net/sprites/home/normal/2x/rookidee.jpg","t":["Flying"]},"corvisquire":{"n":"Corvisquire","i":"https://img.pokemondb.net/sprites/home/normal/2x/corvisquire.jpg","t":["Flying"]},"corviknight":{"n":"Corviknight","i":"https://img.pokemondb.net/sprites/home/normal/2x/corviknight.jpg","t":["Flying","Steel"]},"skwovet":{"n":"Skwovet","i":"https://img.pokemondb.net/sprites/home/normal/2x/skwovet.jpg","t":["Normal"]},"greedent":{"n":"Greedent","i":"https://img.pokemondb.net/sprites/home/normal/2x/greedent.jpg","t":["Normal"]},"pidove":{"n":"Pidove","i":"https://img.pokemondb.net/sprites/home/normal/2x/pidove.jpg","t":["Normal","Flying"]},"tranquill":{"n":"Tranquill","i":"https://img.pokemondb.net/sprites/home/normal/2x/tranquill.jpg","t":["Normal","Flying"]},"unfezant":{"n":"Unfezant","i":"https://img.pokemondb.net/sprites/home/normal/2x/unfezant.jpg","t":["Normal","Flying"]},"nickit":{"n":"Nickit","i":"https://img.pokemondb.net/sprites/home/normal/2x/nickit.jpg","t":["Dark"]},"thievul":{"n":"Thievul","i":"https://img.pokemondb.net/sprites/home/normal/2x/thievul.jpg","t":["Dark"]},"zigzagoon":{"n":"Zigzagoon","i":"https://img.pokemondb.net/sprites/home/normal/2x/zigzagoon-galarian.jpg","t":["Dark","Normal"]},"linoone":{"n":"Linoone","i":"https://img.pokemondb.net/sprites/home/normal/2x/linoone-galarian.jpg","t":["Dark","Normal"]},"obstagoon":{"n":"Obstagoon","i":"https://img.pokemondb.net/sprites/home/normal/2x/obstagoon.jpg","t":["Dark","Normal"]},"wooloo":{"n":"Wooloo","i":"https://img.pokemondb.net/sprites/home/normal/2x/wooloo.jpg","t":["Normal"]},"dubwool":{"n":"Dubwool","i":"https://img.pokemondb.net/sprites/home/normal/2x/dubwool.jpg","t":["Normal"]},"lotad":{"n":"Lotad","i":"https://img.pokemondb.net/sprites/home/normal/2x/lotad.jpg","t":["Water","Grass"],"v":"shield"},"lombre":{"n":"Lombre","i":"https://img.pokemondb.net/sprites/home/normal/2x/lombre.jpg","t":["Water","Grass"],"v":"shield"},"ludicolo":{"n":"Ludicolo","i":"https://img.pokemondb.net/sprites/home/normal/2x/ludicolo.jpg","t":["Water","Grass"],"v":"shield"},"seedot":{"n":"Seedot","i":"https://img.pokemondb.net/sprites/home/normal/2x/seedot.jpg","t":["Grass"],"v":"sword"},"nuzleaf":{"n":"Nuzleaf","i":"https://img.pokemondb.net/sprites/home/normal/2x/nuzleaf.jpg","t":["Grass","Dark"],"v":"sword"},"shiftry":{"n":"Shiftry","i":"https://img.pokemondb.net/sprites/home/normal/2x/shiftry.jpg","t":["Grass","Dark"],"v":"sword"},"chewtle":{"n":"Chewtle","i":"https://img.pokemondb.net/sprites/home/normal/2x/chewtle.jpg","t":["Water"]},"drednaw":{"n":"Drednaw","i":"https://img.pokemondb.net/sprites/home/normal/2x/drednaw.jpg","t":["Water","Rock"]},"purrloin":{"n":"Purrloin","i":"https://img.pokemondb.net/sprites/home/normal/2x/purrloin.jpg","t":["Dark"]},"liepard":{"n":"Liepard","i":"https://img.pokemondb.net/sprites/home/normal/2x/liepard.jpg","t":["Dark"]},"yamper":{"n":"Yamper","i":"https://img.pokemondb.net/sprites/home/normal/2x/yamper.jpg","t":["Electric"]},"boltund":{"n":"Boltund","i":"https://img.pokemondb.net/sprites/home/normal/2x/boltund.jpg","t":["Electric"]},"bunnelby":{"n":"Bunnelby","i":"https://img.pokemondb.net/sprites/home/normal/2x/bunnelby.jpg","t":["Normal"]},"diggersby":{"n":"Diggersby","i":"https://img.pokemondb.net/sprites/home/normal/2x/diggersby.jpg","t":["Normal","Ground"]},"minccino":{"n":"Minccino","i":"https://img.pokemondb.net/sprites/home/normal/2x/minccino.jpg","t":["Normal"]},"cinccino":{"n":"Cinccino","i":"https://img.pokemondb.net/sprites/home/normal/2x/cinccino.jpg","t":["Normal"]},"bounsweet":{"n":"Bounsweet","i":"https://img.pokemondb.net/sprites/home/normal/2x/bounsweet.jpg","t":["Grass"]},"steenee":{"n":"Steenee","i":"https://img.pokemondb.net/sprites/home/normal/2x/steenee.jpg","t":["Grass"]},"tsareena":{"n":"Tsareena","i":"https://img.pokemondb.net/sprites/home/normal/2x/tsareena.jpg","t":["Grass"]},"oddish":{"n":"Oddish","i":"https://img.pokemondb.net/sprites/home/normal/2x/oddish.jpg","t":["Grass","Poison"]},"gloom":{"n":"Gloom","i":"https://img.pokemondb.net/sprites/home/normal/2x/gloom.jpg","t":["Grass","Poison"]},"vileplume":{"n":"Vileplume","i":"https://img.pokemondb.net/sprites/home/normal/2x/vileplume.jpg","t":["Grass","Poison"]},"bellossom":{"n":"Bellossom","i":"https://img.pokemondb.net/sprites/home/normal/2x/bellossom.jpg","t":["Grass"]},"budew":{"n":"Budew","i":"https://img.pokemondb.net/sprites/home/normal/2x/budew.jpg","t":["Grass","Poison"]},"roselia":{"n":"Roselia","i":"https://img.pokemondb.net/sprites/home/normal/2x/roselia.jpg","t":["Grass","Poison"]},"roserade":{"n":"Roserade","i":"https://img.pokemondb.net/sprites/home/normal/2x/roserade.jpg","t":["Grass","Poison"]},"wingull":{"n":"Wingull","i":"https://img.pokemondb.net/sprites/home/normal/2x/wingull.jpg","t":["Water","Flying"]},"pelipper":{"n":"Pelipper","i":"https://img.pokemondb.net/sprites/home/normal/2x/pelipper.jpg","t":["Water","Flying"]},"joltik":{"n":"Joltik","i":"https://img.pokemondb.net/sprites/home/normal/2x/joltik.jpg","t":["Bug","Electric"]},"galvantula":{"n":"Galvantula","i":"https://img.pokemondb.net/sprites/home/normal/2x/galvantula.jpg","t":["Bug","Electric"]},"electrike":{"n":"Electrike","i":"https://img.pokemondb.net/sprites/home/normal/2x/electrike.jpg","t":["Electric"]},"manectric":{"n":"Manectric","i":"https://img.pokemondb.net/sprites/home/normal/2x/manectric.jpg","t":["Electric"]},"vulpix":{"n":"Vulpix","i":"https://img.pokemondb.net/sprites/home/normal/2x/vulpix.jpg","t":["Fire"]},"ninetales":{"n":"Ninetales","i":"https://img.pokemondb.net/sprites/home/normal/2x/ninetales.jpg","t":["Fire"]},"growlithe":{"n":"Growlithe","i":"https://img.pokemondb.net/sprites/home/normal/2x/growlithe.jpg","t":["Fire"]},"arcanine":{"n":"Arcanine","i":"https://img.pokemondb.net/sprites/home/normal/2x/arcanine.jpg","t":["Fire"]},"vanillite":{"n":"Vanillite","i":"https://img.pokemondb.net/sprites/home/normal/2x/vanillite.jpg","t":["Ice"]},"vanillish":{"n":"Vanillish","i":"https://img.pokemondb.net/sprites/home/normal/2x/vanillish.jpg","t":["Ice"]},"vanilluxe":{"n":"Vanilluxe","i":"https://img.pokemondb.net/sprites/home/normal/2x/vanilluxe.jpg","t":["Ice"]},"swinub":{"n":"Swinub","i":"https://img.pokemondb.net/sprites/home/normal/2x/swinub.jpg","t":["Ice","Ground"]},"piloswine":{"n":"Piloswine","i":"https://img.pokemondb.net/sprites/home/normal/2x/piloswine.jpg","t":["Ice","Ground"]},"mamoswine":{"n":"Mamoswine","i":"https://img.pokemondb.net/sprites/home/normal/2x/mamoswine.jpg","t":["Ice","Ground"]},"delibird":{"n":"Delibird","i":"https://img.pokemondb.net/sprites/home/normal/2x/delibird.jpg","t":["Ice","Flying"]},"snorunt":{"n":"Snorunt","i":"https://img.pokemondb.net/sprites/home/normal/2x/snorunt.jpg","t":["Ice"]},"glalie":{"n":"Glalie","i":"https://img.pokemondb.net/sprites/home/normal/2x/glalie.jpg","t":["Ice"]},"froslass":{"n":"Froslass","i":"https://img.pokemondb.net/sprites/home/normal/2x/froslass.jpg","t":["Ice","Ghost"]},"baltoy":{"n":"Baltoy","i":"https://img.pokemondb.net/sprites/home/normal/2x/baltoy.jpg","t":["Ground","Psychic"]},"claydol":{"n":"Claydol","i":"https://img.pokemondb.net/sprites/home/normal/2x/claydol.jpg","t":["Ground","Psychic"]},"mudbray":{"n":"Mudbray","i":"https://img.pokemondb.net/sprites/home/normal/2x/mudbray.jpg","t":["Ground"]},"mudsdale":{"n":"Mudsdale","i":"https://img.pokemondb.net/sprites/home/normal/2x/mudsdale.jpg","t":["Ground"]},"dwebble":{"n":"Dwebble","i":"https://img.pokemondb.net/sprites/home/normal/2x/dwebble.jpg","t":["Bug","Rock"]},"crustle":{"n":"Crustle","i":"https://img.pokemondb.net/sprites/home/normal/2x/crustle.jpg","t":["Bug","Rock"]},"golett":{"n":"Golett","i":"https://img.pokemondb.net/sprites/home/normal/2x/golett.jpg","t":["Ground","Ghost"]},"golurk":{"n":"Golurk","i":"https://img.pokemondb.net/sprites/home/normal/2x/golurk.jpg","t":["Ground","Ghost"]},"munna":{"n":"Munna","i":"https://img.pokemondb.net/sprites/home/normal/2x/munna.jpg","t":["Psychic"]},"musharna":{"n":"Musharna","i":"https://img.pokemondb.net/sprites/home/normal/2x/musharna.jpg","t":["Psychic"]},"natu":{"n":"Natu","i":"https://img.pokemondb.net/sprites/home/normal/2x/natu.jpg","t":["Psychic","Flying"]},"xatu":{"n":"Xatu","i":"https://img.pokemondb.net/sprites/home/normal/2x/xatu.jpg","t":["Psychic","Flying"]},"stufful":{"n":"Stufful","i":"https://img.pokemondb.net/sprites/home/normal/2x/stufful.jpg","t":["Normal","Fighting"]},"bewear":{"n":"Bewear","i":"https://img.pokemondb.net/sprites/home/normal/2x/bewear.jpg","t":["Normal","Fighting"]},"snover":{"n":"Snover","i":"https://img.pokemondb.net/sprites/home/normal/2x/snover.jpg","t":["Grass","Ice"]},"abomasnow":{"n":"Abomasnow","i":"https://img.pokemondb.net/sprites/home/normal/2x/abomasnow.jpg","t":["Grass","Ice"]},"krabby":{"n":"Krabby","i":"https://img.pokemondb.net/sprites/home/normal/2x/krabby.jpg","t":["Water"]},"kingler":{"n":"Kingler","i":"https://img.pokemondb.net/sprites/home/normal/2x/kingler.jpg","t":["Water"]},"wooper":{"n":"Wooper","i":"https://img.pokemondb.net/sprites/home/normal/2x/wooper.jpg","t":["Water","Ground"]},"quagsire":{"n":"Quagsire","i":"https://img.pokemondb.net/sprites/home/normal/2x/quagsire.jpg","t":["Water","Ground"]},"corphish":{"n":"Corphish","i":"https://img.pokemondb.net/sprites/home/normal/2x/corphish.jpg","t":["Water"]},"crawdaunt":{"n":"Crawdaunt","i":"https://img.pokemondb.net/sprites/home/normal/2x/crawdaunt.jpg","t":["Water","Dark"]},"nincada":{"n":"Nincada","i":"https://img.pokemondb.net/sprites/home/normal/2x/nincada.jpg","t":["Bug","Ground"]},"ninjask":{"n":"Ninjask","i":"https://img.pokemondb.net/sprites/home/normal/2x/ninjask.jpg","t":["Bug","Flying"]},"shedinja":{"n":"Shedinja","i":"https://img.pokemondb.net/sprites/home/normal/2x/shedinja.jpg","t":["Bug","Ghost"]},"tyrogue":{"n":"Tyrogue","i":"https://img.pokemondb.net/sprites/home/normal/2x/tyrogue.jpg","t":["Fighting"]},"hitmonlee":{"n":"Hitmonlee","i":"https://img.pokemondb.net/sprites/home/normal/2x/hitmonlee.jpg","t":["Fighting"]},"hitmonchan":{"n":"Hitmonchan","i":"https://img.pokemondb.net/sprites/home/normal/2x/hitmonchan.jpg","t":["Fighting"]},"hitmontop":{"n":"Hitmontop","i":"https://img.pokemondb.net/sprites/home/normal/2x/hitmontop.jpg","t":["Fighting"]},"pancham":{"n":"Pancham","i":"https://img.pokemondb.net/sprites/home/normal/2x/pancham.jpg","t":["Fighting"]},"pangoro":{"n":"Pangoro","i":"https://img.pokemondb.net/sprites/home/normal/2x/pangoro.jpg","t":["Fighting","Dark"]},"klink":{"n":"Klink","i":"https://img.pokemondb.net/sprites/home/normal/2x/klink.jpg","t":["Steel"]},"klang":{"n":"Klang","i":"https://img.pokemondb.net/sprites/home/normal/2x/klang.jpg","t":["Steel"]},"klinklang":{"n":"Klinklang","i":"https://img.pokemondb.net/sprites/home/normal/2x/klinklang.jpg","t":["Steel"]},"combee":{"n":"Combee","i":"https://img.pokemondb.net/sprites/home/normal/2x/combee.jpg","t":["Bug","Flying"]},"vespiquen":{"n":"Vespiquen","i":"https://img.pokemondb.net/sprites/home/normal/2x/vespiquen.jpg","t":["Bug","Flying"]},"bronzor":{"n":"Bronzor","i":"https://img.pokemondb.net/sprites/home/normal/2x/bronzor.jpg","t":["Steel","Psychic"]},"bronzong":{"n":"Bronzong","i":"https://img.pokemondb.net/sprites/home/normal/2x/bronzong.jpg","t":["Steel","Psychic"]},"ralts":{"n":"Ralts","i":"https://img.pokemondb.net/sprites/home/normal/2x/ralts.jpg","t":["Psychic","Fairy"]},"kirlia":{"n":"Kirlia","i":"https://img.pokemondb.net/sprites/home/normal/2x/kirlia.jpg","t":["Psychic","Fairy"]},"gardevoir":{"n":"Gardevoir","i":"https://img.pokemondb.net/sprites/home/normal/2x/gardevoir.jpg","t":["Psychic","Fairy"]},"gallade":{"n":"Gallade","i":"https://img.pokemondb.net/sprites/home/normal/2x/gallade.jpg","t":["Psychic","Fighting"]},"drifloon":{"n":"Drifloon","i":"https://img.pokemondb.net/sprites/home/normal/2x/drifloon.jpg","t":["Ghost","Flying"]},"drifblim":{"n":"Drifblim","i":"https://img.pokemondb.net/sprites/home/normal/2x/drifblim.jpg","t":["Ghost","Flying"]},"gossifleur":{"n":"Gossifleur","i":"https://img.pokemondb.net/sprites/home/normal/2x/gossifleur.jpg","t":["Grass"]},"eldegoss":{"n":"Eldegoss","i":"https://img.pokemondb.net/sprites/home/normal/2x/eldegoss.jpg","t":["Grass"]},"cherubi":{"n":"Cherubi","i":"https://img.pokemondb.net/sprites/home/normal/2x/cherubi.jpg","t":["Grass"]},"cherrim":{"n":"Cherrim","i":"https://img.pokemondb.net/sprites/home/normal/2x/cherrim.jpg","t":["Grass"]},"stunky":{"n":"Stunky","i":"https://img.pokemondb.net/sprites/home/normal/2x/stunky.jpg","t":["Poison","Dark"]},"skuntank":{"n":"Skuntank","i":"https://img.pokemondb.net/sprites/home/normal/2x/skuntank.jpg","t":["Poison","Dark"]},"tympole":{"n":"Tympole","i":"https://img.pokemondb.net/sprites/home/normal/2x/tympole.jpg","t":["Water"]},"palpitoad":{"n":"Palpitoad","i":"https://img.pokemondb.net/sprites/home/normal/2x/palpitoad.jpg","t":["Water","Ground"]},"seismitoad":{"n":"Seismitoad","i":"https://img.pokemondb.net/sprites/home/normal/2x/seismitoad.jpg","t":["Water","Ground"]},"duskull":{"n":"Duskull","i":"https://img.pokemondb.net/sprites/home/normal/2x/duskull.jpg","t":["Ghost"]},"dusclops":{"n":"Dusclops","i":"https://img.pokemondb.net/sprites/home/normal/2x/dusclops.jpg","t":["Ghost"]},"dusknoir":{"n":"Dusknoir","i":"https://img.pokemondb.net/sprites/home/normal/2x/dusknoir.jpg","t":["Ghost"]},"machop":{"n":"Machop","i":"https://img.pokemondb.net/sprites/home/normal/2x/machop.jpg","t":["Fighting"]},"machoke":{"n":"Machoke","i":"https://img.pokemondb.net/sprites/home/normal/2x/machoke.jpg","t":["Fighting"]},"machamp":{"n":"Machamp","i":"https://img.pokemondb.net/sprites/home/normal/2x/machamp.jpg","t":["Fighting"]},"gastly":{"n":"Gastly","i":"https://img.pokemondb.net/sprites/home/normal/2x/gastly.jpg","t":["Ghost","Poison"]},"haunter":{"n":"Haunter","i":"https://img.pokemondb.net/sprites/home/normal/2x/haunter.jpg","t":["Ghost","Poison"]},"gengar":{"n":"Gengar","i":"https://img.pokemondb.net/sprites/home/normal/2x/gengar.jpg","t":["Ghost","Poison"]},"magikarp":{"n":"Magikarp","i":"https://img.pokemondb.net/sprites/home/normal/2x/magikarp.jpg","t":["Water"]},"gyarados":{"n":"Gyarados","i":"https://img.pokemondb.net/sprites/home/normal/2x/gyarados.jpg","t":["Water","Flying"]},"goldeen":{"n":"Goldeen","i":"https://img.pokemondb.net/sprites/home/normal/2x/goldeen.jpg","t":["Water"]},"seaking":{"n":"Seaking","i":"https://img.pokemondb.net/sprites/home/normal/2x/seaking.jpg","t":["Water"]},"remoraid":{"n":"Remoraid","i":"https://img.pokemondb.net/sprites/home/normal/2x/remoraid.jpg","t":["Water"]},"octillery":{"n":"Octillery","i":"https://img.pokemondb.net/sprites/home/normal/2x/octillery.jpg","t":["Water"]},"shellder":{"n":"Shellder","i":"https://img.pokemondb.net/sprites/home/normal/2x/shellder.jpg","t":["Water"]},"cloyster":{"n":"Cloyster","i":"https://img.pokemondb.net/sprites/home/normal/2x/cloyster.jpg","t":["Water","Ice"]},"feebas":{"n":"Feebas","i":"https://img.pokemondb.net/sprites/home/normal/2x/feebas.jpg","t":["Water"]},"milotic":{"n":"Milotic","i":"https://img.pokemondb.net/sprites/home/normal/2x/milotic.jpg","t":["Water"]},"basculin":{"n":"Basculin","i":"https://img.pokemondb.net/sprites/home/normal/2x/basculin.jpg","t":["Water"],"v":"split"},"wishiwashi":{"n":"Wishiwashi","i":"https://img.pokemondb.net/sprites/home/normal/2x/wishiwashi.jpg","t":["Water"]},"pyukumuku":{"n":"Pyukumuku","i":"https://img.pokemondb.net/sprites/home/normal/2x/pyukumuku.jpg","t":["Water"]},"trubbish":{"n":"Trubbish","i":"https://img.pokemondb.net/sprites/home/normal/2x/trubbish.jpg","t":["Poison"]},"garbodor":{"n":"Garbodor","i":"https://img.pokemondb.net/sprites/home/normal/2x/garbodor.jpg","t":["Poison"]},"sizzlipede":{"n":"Sizzlipede","i":"https://img.pokemondb.net/sprites/home/normal/2x/sizzlipede.jpg","t":["Fire","Bug"]},"centiskorch":{"n":"Centiskorch","i":"https://img.pokemondb.net/sprites/home/normal/2x/centiskorch.jpg","t":["Fire","Bug"]},"rolycoly":{"n":"Rolycoly","i":"https://img.pokemondb.net/sprites/home/normal/2x/rolycoly.jpg","t":["Rock"]},"carkol":{"n":"Carkol","i":"https://img.pokemondb.net/sprites/home/normal/2x/carkol.jpg","t":["Rock","Fire"]},"coalossal":{"n":"Coalossal","i":"https://img.pokemondb.net/sprites/home/normal/2x/coalossal.jpg","t":["Rock","Fire"]},"diglett":{"n":"Diglett","i":"https://img.pokemondb.net/sprites/home/normal/2x/diglett.jpg","t":["Ground"]},"dugtrio":{"n":"Dugtrio","i":"https://img.pokemondb.net/sprites/home/normal/2x/dugtrio.jpg","t":["Ground"]},"drilbur":{"n":"Drilbur","i":"https://img.pokemondb.net/sprites/home/normal/2x/drilbur.jpg","t":["Ground"]},"excadrill":{"n":"Excadrill","i":"https://img.pokemondb.net/sprites/home/normal/2x/excadrill.jpg","t":["Ground","Steel"]},"roggenrola":{"n":"Roggenrola","i":"https://img.pokemondb.net/sprites/home/normal/2x/roggenrola.jpg","t":["Rock"]},"boldore":{"n":"Boldore","i":"https://img.pokemondb.net/sprites/home/normal/2x/boldore.jpg","t":["Rock"]},"gigalith":{"n":"Gigalith","i":"https://img.pokemondb.net/sprites/home/normal/2x/gigalith.jpg","t":["Rock"]},"timburr":{"n":"Timburr","i":"https://img.pokemondb.net/sprites/home/normal/2x/timburr.jpg","t":["Fighting"]},"gurdurr":{"n":"Gurdurr","i":"https://img.pokemondb.net/sprites/home/normal/2x/gurdurr.jpg","t":["Fighting"]},"conkeldurr":{"n":"Conkeldurr","i":"https://img.pokemondb.net/sprites/home/normal/2x/conkeldurr.jpg","t":["Fighting"]},"woobat":{"n":"Woobat","i":"https://img.pokemondb.net/sprites/home/normal/2x/woobat.jpg","t":["Psychic","Flying"]},"swoobat":{"n":"Swoobat","i":"https://img.pokemondb.net/sprites/home/normal/2x/swoobat.jpg","t":["Psychic","Flying"]},"noibat":{"n":"Noibat","i":"https://img.pokemondb.net/sprites/home/normal/2x/noibat.jpg","t":["Flying","Dragon"]},"noivern":{"n":"Noivern","i":"https://img.pokemondb.net/sprites/home/normal/2x/noivern.jpg","t":["Flying","Dragon"]},"onix":{"n":"Onix","i":"https://img.pokemondb.net/sprites/home/normal/2x/onix.jpg","t":["Rock","Ground"]},"steelix":{"n":"Steelix","i":"https://img.pokemondb.net/sprites/home/normal/2x/steelix.jpg","t":["Steel","Ground"]},"arrokuda":{"n":"Arrokuda","i":"https://img.pokemondb.net/sprites/home/normal/2x/arrokuda.jpg","t":["Water"]},"barraskewda":{"n":"Barraskewda","i":"https://img.pokemondb.net/sprites/home/normal/2x/barraskewda.jpg","t":["Water"]},"meowth":{"n":"Meowth","i":"https://img.pokemondb.net/sprites/home/normal/2x/meowth-galarian.jpg","t":["Steel"]},"perrserker":{"n":"Perrserker","i":"https://img.pokemondb.net/sprites/home/normal/2x/perrserker.jpg","t":["Steel"]},"persian":{"n":"Persian","i":"https://img.pokemondb.net/sprites/home/normal/2x/persian.jpg","t":["Normal"]},"milcery":{"n":"Milcery","i":"https://img.pokemondb.net/sprites/home/normal/2x/milcery.jpg","t":["Fairy"]},"alcremie":{"n":"Alcremie","i":"https://img.pokemondb.net/sprites/home/normal/2x/alcremie.jpg","t":["Fairy"]},"cutiefly":{"n":"Cutiefly","i":"https://img.pokemondb.net/sprites/home/normal/2x/cutiefly.jpg","t":["Bug","Fairy"]},"ribombee":{"n":"Ribombee","i":"https://img.pokemondb.net/sprites/home/normal/2x/ribombee.jpg","t":["Bug","Fairy"]},"ferroseed":{"n":"Ferroseed","i":"https://img.pokemondb.net/sprites/home/normal/2x/ferroseed.jpg","t":["Grass","Steel"]},"ferrothorn":{"n":"Ferrothorn","i":"https://img.pokemondb.net/sprites/home/normal/2x/ferrothorn.jpg","t":["Grass","Steel"]},"pumpkaboo":{"n":"Pumpkaboo","i":"https://img.pokemondb.net/sprites/home/normal/2x/pumpkaboo.jpg","t":["Ghost","Grass"]},"gourgeist":{"n":"Gourgeist","i":"https://img.pokemondb.net/sprites/home/normal/2x/gourgeist.jpg","t":["Ghost","Grass"]},"pichu":{"n":"Pichu","i":"https://img.pokemondb.net/sprites/home/normal/2x/pichu.jpg","t":["Electric"]},"pikachu":{"n":"Pikachu","i":"https://img.pokemondb.net/sprites/home/normal/2x/pikachu.jpg","t":["Electric"]},"raichu":{"n":"Raichu","i":"https://img.pokemondb.net/sprites/home/normal/2x/raichu.jpg","t":["Electric"]},"eevee":{"n":"Eevee","i":"https://img.pokemondb.net/sprites/home/normal/2x/eevee.jpg","t":["Normal"]},"vaporeon":{"n":"Vaporeon","i":"https://img.pokemondb.net/sprites/home/normal/2x/vaporeon.jpg","t":["Water"]},"jolteon":{"n":"Jolteon","i":"https://img.pokemondb.net/sprites/home/normal/2x/jolteon.jpg","t":["Electric"]},"flareon":{"n":"Flareon","i":"https://img.pokemondb.net/sprites/home/normal/2x/flareon.jpg","t":["Fire"]},"espeon":{"n":"Espeon","i":"https://img.pokemondb.net/sprites/home/normal/2x/espeon.jpg","t":["Psychic"]},"umbreon":{"n":"Umbreon","i":"https://img.pokemondb.net/sprites/home/normal/2x/umbreon.jpg","t":["Dark"]},"leafeon":{"n":"Leafeon","i":"https://img.pokemondb.net/sprites/home/normal/2x/leafeon.jpg","t":["Grass"]},"glaceon":{"n":"Glaceon","i":"https://img.pokemondb.net/sprites/home/normal/2x/glaceon.jpg","t":["Ice"]},"sylveon":{"n":"Sylveon","i":"https://img.pokemondb.net/sprites/home/normal/2x/sylveon.jpg","t":["Fairy"]},"applin":{"n":"Applin","i":"https://img.pokemondb.net/sprites/home/normal/2x/applin.jpg","t":["Grass","Dragon"]},"flapple":{"n":"Flapple","i":"https://img.pokemondb.net/sprites/home/normal/2x/flapple.jpg","t":["Grass","Dragon"],"v":"sword"},"appletun":{"n":"Appletun","i":"https://img.pokemondb.net/sprites/home/normal/2x/appletun.jpg","t":["Grass","Dragon"],"v":"shield"},"espurr":{"n":"Espurr","i":"https://img.pokemondb.net/sprites/home/normal/2x/espurr.jpg","t":["Psychic"]},"meowstic":{"n":"Meowstic","i":"https://img.pokemondb.net/sprites/home/normal/2x/meowstic.jpg","t":["Psychic"]},"swirlix":{"n":"Swirlix","i":"https://img.pokemondb.net/sprites/home/normal/2x/swirlix.jpg","t":["Fairy"],"v":"sword"},"slurpuff":{"n":"Slurpuff","i":"https://img.pokemondb.net/sprites/home/normal/2x/slurpuff.jpg","t":["Fairy"],"v":"sword"},"spritzee":{"n":"Spritzee","i":"https://img.pokemondb.net/sprites/home/normal/2x/spritzee.jpg","t":["Fairy"],"v":"shield"},"aromatisse":{"n":"Aromatisse","i":"https://img.pokemondb.net/sprites/home/normal/2x/aromatisse.jpg","t":["Fairy"],"v":"shield"},"dewpider":{"n":"Dewpider","i":"https://img.pokemondb.net/sprites/home/normal/2x/dewpider.jpg","t":["Water","Bug"]},"araquanid":{"n":"Araquanid","i":"https://img.pokemondb.net/sprites/home/normal/2x/araquanid.jpg","t":["Water","Bug"]},"wynaut":{"n":"Wynaut","i":"https://img.pokemondb.net/sprites/home/normal/2x/wynaut.jpg","t":["Psychic"]},"wobbuffet":{"n":"Wobbuffet","i":"https://img.pokemondb.net/sprites/home/normal/2x/wobbuffet.jpg","t":["Psychic"]},"farfetchd":{"n":"Farfetch'd","i":"https://img.pokemondb.net/sprites/home/normal/2x/farfetchd-galarian.jpg","t":["Fighting"],"v":"sword"},"sirfetchd":{"n":"Sirfetch'd","i":"https://img.pokemondb.net/sprites/home/normal/2x/sirfetchd.jpg","t":["Fighting"],"v":"sword"},"chinchou":{"n":"Chinchou","i":"https://img.pokemondb.net/sprites/home/normal/2x/chinchou.jpg","t":["Water","Electric"]},"lanturn":{"n":"Lanturn","i":"https://img.pokemondb.net/sprites/home/normal/2x/lanturn.jpg","t":["Water","Electric"]},"croagunk":{"n":"Croagunk","i":"https://img.pokemondb.net/sprites/home/normal/2x/croagunk.jpg","t":["Poison","Fighting"],"v":"shield"},"toxicroak":{"n":"Toxicroak","i":"https://img.pokemondb.net/sprites/home/normal/2x/toxicroak.jpg","t":["Poison","Fighting"],"v":"shield"},"scraggy":{"n":"Scraggy","i":"https://img.pokemondb.net/sprites/home/normal/2x/scraggy.jpg","t":["Dark","Fighting"],"v":"sword"},"scrafty":{"n":"Scrafty","i":"https://img.pokemondb.net/sprites/home/normal/2x/scrafty.jpg","t":["Dark","Fighting"],"v":"sword"},"stunfisk":{"n":"Stunfisk","i":"https://img.pokemondb.net/sprites/home/normal/2x/stunfisk-galarian.jpg","t":["Ground","Steel"]},"shuckle":{"n":"Shuckle","i":"https://img.pokemondb.net/sprites/home/normal/2x/shuckle.jpg","t":["Bug","Rock"]},"barboach":{"n":"Barboach","i":"https://img.pokemondb.net/sprites/home/normal/2x/barboach.jpg","t":["Water","Ground"]},"whiscash":{"n":"Whiscash","i":"https://img.pokemondb.net/sprites/home/normal/2x/whiscash.jpg","t":["Water","Ground"]},"shellos":{"n":"Shellos","i":"https://img.pokemondb.net/sprites/home/normal/2x/shellos.jpg","t":["Water"]},"gastrodon":{"n":"Gastrodon","i":"https://img.pokemondb.net/sprites/home/normal/2x/gastrodon.jpg","t":["Water","Ground"]},"wimpod":{"n":"Wimpod","i":"https://img.pokemondb.net/sprites/home/normal/2x/wimpod.jpg","t":["Bug","Water"]},"golisopod":{"n":"Golisopod","i":"https://img.pokemondb.net/sprites/home/normal/2x/golisopod.jpg","t":["Bug","Water"]},"binacle":{"n":"Binacle","i":"https://img.pokemondb.net/sprites/home/normal/2x/binacle.jpg","t":["Rock","Water"]},"barbaracle":{"n":"Barbaracle","i":"https://img.pokemondb.net/sprites/home/normal/2x/barbaracle.jpg","t":["Rock","Water"]},"corsola":{"n":"Corsola","i":"https://img.pokemondb.net/sprites/home/normal/2x/corsola-galarian.jpg","t":["Ghost"],"v":"shield"},"cursola":{"n":"Cursola","i":"https://img.pokemondb.net/sprites/home/normal/2x/cursola.jpg","t":["Ghost"],"v":"shield"},"impidimp":{"n":"Impidimp","i":"https://img.pokemondb.net/sprites/home/normal/2x/impidimp.jpg","t":["Dark","Fairy"]},"morgrem":{"n":"Morgrem","i":"https://img.pokemondb.net/sprites/home/normal/2x/morgrem.jpg","t":["Dark","Fairy"]},"grimmsnarl":{"n":"Grimmsnarl","i":"https://img.pokemondb.net/sprites/home/normal/2x/grimmsnarl.jpg","t":["Dark","Fairy"]},"hatenna":{"n":"Hatenna","i":"https://img.pokemondb.net/sprites/home/normal/2x/hatenna.jpg","t":["Psychic"]},"hattrem":{"n":"Hattrem","i":"https://img.pokemondb.net/sprites/home/normal/2x/hattrem.jpg","t":["Psychic"]},"hatterene":{"n":"Hatterene","i":"https://img.pokemondb.net/sprites/home/normal/2x/hatterene.jpg","t":["Psychic","Fairy"]},"salandit":{"n":"Salandit","i":"https://img.pokemondb.net/sprites/home/normal/2x/salandit.jpg","t":["Poison","Fire"]},"salazzle":{"n":"Salazzle","i":"https://img.pokemondb.net/sprites/home/normal/2x/salazzle.jpg","t":["Poison","Fire"]},"pawniard":{"n":"Pawniard","i":"https://img.pokemondb.net/sprites/home/normal/2x/pawniard.jpg","t":["Dark","Steel"]},"bisharp":{"n":"Bisharp","i":"https://img.pokemondb.net/sprites/home/normal/2x/bisharp.jpg","t":["Dark","Steel"]},"throh":{"n":"Throh","i":"https://img.pokemondb.net/sprites/home/normal/2x/throh.jpg","t":["Fighting"],"v":"shield"},"sawk":{"n":"Sawk","i":"https://img.pokemondb.net/sprites/home/normal/2x/sawk.jpg","t":["Fighting"],"v":"sword"},"koffing":{"n":"Koffing","i":"https://img.pokemondb.net/sprites/home/normal/2x/koffing.jpg","t":["Poison"]},"weezing":{"n":"Weezing","i":"https://img.pokemondb.net/sprites/home/normal/2x/weezing-galarian.jpg","t":["Poison","Fairy"]},"bonsly":{"n":"Bonsly","i":"https://img.pokemondb.net/sprites/home/normal/2x/bonsly.jpg","t":["Rock"]},"sudowoodo":{"n":"Sudowoodo","i":"https://img.pokemondb.net/sprites/home/normal/2x/sudowoodo.jpg","t":["Rock"]},"cleffa":{"n":"Cleffa","i":"https://img.pokemondb.net/sprites/home/normal/2x/cleffa.jpg","t":["Fairy"]},"clefairy":{"n":"Clefairy","i":"https://img.pokemondb.net/sprites/home/normal/2x/clefairy.jpg","t":["Fairy"]},"clefable":{"n":"Clefable","i":"https://img.pokemondb.net/sprites/home/normal/2x/clefable.jpg","t":["Fairy"]},"togepi":{"n":"Togepi","i":"https://img.pokemondb.net/sprites/home/normal/2x/togepi.jpg","t":["Fairy"]},"togetic":{"n":"Togetic","i":"https://img.pokemondb.net/sprites/home/normal/2x/togetic.jpg","t":["Fairy","Flying"]},"togekiss":{"n":"Togekiss","i":"https://img.pokemondb.net/sprites/home/normal/2x/togekiss.jpg","t":["Fairy","Flying"]},"munchlax":{"n":"Munchlax","i":"https://img.pokemondb.net/sprites/home/normal/2x/munchlax.jpg","t":["Normal"]},"snorlax":{"n":"Snorlax","i":"https://img.pokemondb.net/sprites/home/normal/2x/snorlax.jpg","t":["Normal"]},"cottonee":{"n":"Cottonee","i":"https://img.pokemondb.net/sprites/home/normal/2x/cottonee.jpg","t":["Grass","Fairy"]},"whimsicott":{"n":"Whimsicott","i":"https://img.pokemondb.net/sprites/home/normal/2x/whimsicott.jpg","t":["Grass","Fairy"]},"rhyhorn":{"n":"Rhyhorn","i":"https://img.pokemondb.net/sprites/home/normal/2x/rhyhorn.jpg","t":["Ground","Rock"]},"rhydon":{"n":"Rhydon","i":"https://img.pokemondb.net/sprites/home/normal/2x/rhydon.jpg","t":["Ground","Rock"]},"rhyperior":{"n":"Rhyperior","i":"https://img.pokemondb.net/sprites/home/normal/2x/rhyperior.jpg","t":["Ground","Rock"]},"gothita":{"n":"Gothita","i":"https://img.pokemondb.net/sprites/home/normal/2x/gothita.jpg","t":["Psychic"],"v":"sword"},"gothorita":{"n":"Gothorita","i":"https://img.pokemondb.net/sprites/home/normal/2x/gothorita.jpg","t":["Psychic"],"v":"sword"},"gothitelle":{"n":"Gothitelle","i":"https://img.pokemondb.net/sprites/home/normal/2x/gothitelle.jpg","t":["Psychic"],"v":"sword"},"solosis":{"n":"Solosis","i":"https://img.pokemondb.net/sprites/home/normal/2x/solosis.jpg","t":["Psychic"],"v":"shield"},"duosion":{"n":"Duosion","i":"https://img.pokemondb.net/sprites/home/normal/2x/duosion.jpg","t":["Psychic"],"v":"shield"},"reuniclus":{"n":"Reuniclus","i":"https://img.pokemondb.net/sprites/home/normal/2x/reuniclus.jpg","t":["Psychic"],"v":"shield"},"karrablast":{"n":"Karrablast","i":"https://img.pokemondb.net/sprites/home/normal/2x/karrablast.jpg","t":["Bug"]},"escavalier":{"n":"Escavalier","i":"https://img.pokemondb.net/sprites/home/normal/2x/escavalier.jpg","t":["Bug","Steel"]},"shelmet":{"n":"Shelmet","i":"https://img.pokemondb.net/sprites/home/normal/2x/shelmet.jpg","t":["Bug"]},"accelgor":{"n":"Accelgor","i":"https://img.pokemondb.net/sprites/home/normal/2x/accelgor.jpg","t":["Bug"]},"elgyem":{"n":"Elgyem","i":"https://img.pokemondb.net/sprites/home/normal/2x/elgyem.jpg","t":["Psychic"]},"beheeyem":{"n":"Beheeyem","i":"https://img.pokemondb.net/sprites/home/normal/2x/beheeyem.jpg","t":["Psychic"]},"cubchoo":{"n":"Cubchoo","i":"https://img.pokemondb.net/sprites/home/normal/2x/cubchoo.jpg","t":["Ice"]},"beartic":{"n":"Beartic","i":"https://img.pokemondb.net/sprites/home/normal/2x/beartic.jpg","t":["Ice"]},"rufflet":{"n":"Rufflet","i":"https://img.pokemondb.net/sprites/home/normal/2x/rufflet.jpg","t":["Normal","Flying"],"v":"sword"},"braviary":{"n":"Braviary","i":"https://img.pokemondb.net/sprites/home/normal/2x/braviary.jpg","t":["Normal","Flying"],"v":"sword"},"vullaby":{"n":"Vullaby","i":"https://img.pokemondb.net/sprites/home/normal/2x/vullaby.jpg","t":["Dark","Flying"],"v":"shield"},"mandibuzz":{"n":"Mandibuzz","i":"https://img.pokemondb.net/sprites/home/normal/2x/mandibuzz.jpg","t":["Dark","Flying"],"v":"shield"},"skorupi":{"n":"Skorupi","i":"https://img.pokemondb.net/sprites/home/normal/2x/skorupi.jpg","t":["Poison","Bug"]},"drapion":{"n":"Drapion","i":"https://img.pokemondb.net/sprites/home/normal/2x/drapion.jpg","t":["Poison","Dark"]},"litwick":{"n":"Litwick","i":"https://img.pokemondb.net/sprites/home/normal/2x/litwick.jpg","t":["Ghost","Fire"]},"lampent":{"n":"Lampent","i":"https://img.pokemondb.net/sprites/home/normal/2x/lampent.jpg","t":["Ghost","Fire"]},"chandelure":{"n":"Chandelure","i":"https://img.pokemondb.net/sprites/home/normal/2x/chandelure.jpg","t":["Ghost","Fire"]},"inkay":{"n":"Inkay","i":"https://img.pokemondb.net/sprites/home/normal/2x/inkay.jpg","t":["Dark","Psychic"]},"malamar":{"n":"Malamar","i":"https://img.pokemondb.net/sprites/home/normal/2x/malamar.jpg","t":["Dark","Psychic"]},"sneasel":{"n":"Sneasel","i":"https://img.pokemondb.net/sprites/home/normal/2x/sneasel.jpg","t":["Dark","Ice"]},"weavile":{"n":"Weavile","i":"https://img.pokemondb.net/sprites/home/normal/2x/weavile.jpg","t":["Dark","Ice"]},"sableye":{"n":"Sableye","i":"https://img.pokemondb.net/sprites/home/normal/2x/sableye.jpg","t":["Dark","Ghost"],"v":"shield"},"mawile":{"n":"Mawile","i":"https://img.pokemondb.net/sprites/home/normal/2x/mawile.jpg","t":["Steel","Fairy"],"v":"sword"},"maractus":{"n":"Maractus","i":"https://img.pokemondb.net/sprites/home/normal/2x/maractus.jpg","t":["Grass"]},"sigilyph":{"n":"Sigilyph","i":"https://img.pokemondb.net/sprites/home/normal/2x/sigilyph.jpg","t":["Psychic","Flying"]},"riolu":{"n":"Riolu","i":"https://img.pokemondb.net/sprites/home/normal/2x/riolu.jpg","t":["Fighting"]},"lucario":{"n":"Lucario","i":"https://img.pokemondb.net/sprites/home/normal/2x/lucario.jpg","t":["Fighting","Steel"]},"torkoal":{"n":"Torkoal","i":"https://img.pokemondb.net/sprites/home/normal/2x/torkoal.jpg","t":["Fire"]},"mimikyu":{"n":"Mimikyu","i":"https://img.pokemondb.net/sprites/home/normal/2x/mimikyu.jpg","t":["Ghost","Fairy"]},"cufant":{"n":"Cufant","i":"https://img.pokemondb.net/sprites/home/normal/2x/cufant.jpg","t":["Steel"]},"copperajah":{"n":"Copperajah","i":"https://img.pokemondb.net/sprites/home/normal/2x/copperajah.jpg","t":["Steel"]},"qwilfish":{"n":"Qwilfish","i":"https://img.pokemondb.net/sprites/home/normal/2x/qwilfish.jpg","t":["Water","Poison"]},"frillish":{"n":"Frillish","i":"https://img.pokemondb.net/sprites/home/normal/2x/frillish.jpg","t":["Water","Ghost"]},"jellicent":{"n":"Jellicent","i":"https://img.pokemondb.net/sprites/home/normal/2x/jellicent.jpg","t":["Water","Ghost"]},"mareanie":{"n":"Mareanie","i":"https://img.pokemondb.net/sprites/home/normal/2x/mareanie.jpg","t":["Poison","Water"]},"toxapex":{"n":"Toxapex","i":"https://img.pokemondb.net/sprites/home/normal/2x/toxapex.jpg","t":["Poison","Water"]},"cramorant":{"n":"Cramorant","i":"https://img.pokemondb.net/sprites/home/normal/2x/cramorant.jpg","t":["Flying","Water"]},"toxel":{"n":"Toxel","i":"https://img.pokemondb.net/sprites/home/normal/2x/toxel.jpg","t":["Electric","Poison"]},"toxtricity":{"n":"Toxtricity","i":"https://img.pokemondb.net/sprites/home/normal/2x/toxtricity.jpg","t":["Electric","Poison"]},"silicobra":{"n":"Silicobra","i":"https://img.pokemondb.net/sprites/home/normal/2x/silicobra.jpg","t":["Ground"]},"sandaconda":{"n":"Sandaconda","i":"https://img.pokemondb.net/sprites/home/normal/2x/sandaconda.jpg","t":["Ground"]},"hippopotas":{"n":"Hippopotas","i":"https://img.pokemondb.net/sprites/home/normal/2x/hippopotas.jpg","t":["Ground"]},"hippowdon":{"n":"Hippowdon","i":"https://img.pokemondb.net/sprites/home/normal/2x/hippowdon.jpg","t":["Ground"]},"durant":{"n":"Durant","i":"https://img.pokemondb.net/sprites/home/normal/2x/durant.jpg","t":["Bug","Steel"]},"heatmor":{"n":"Heatmor","i":"https://img.pokemondb.net/sprites/home/normal/2x/heatmor.jpg","t":["Fire"]},"helioptile":{"n":"Helioptile","i":"https://img.pokemondb.net/sprites/home/normal/2x/helioptile.jpg","t":["Electric","Normal"]},"heliolisk":{"n":"Heliolisk","i":"https://img.pokemondb.net/sprites/home/normal/2x/heliolisk.jpg","t":["Electric","Normal"]},"hawlucha":{"n":"Hawlucha","i":"https://img.pokemondb.net/sprites/home/normal/2x/hawlucha.jpg","t":["Fighting","Flying"]},"trapinch":{"n":"Trapinch","i":"https://img.pokemondb.net/sprites/home/normal/2x/trapinch.jpg","t":["Ground"]},"vibrava":{"n":"Vibrava","i":"https://img.pokemondb.net/sprites/home/normal/2x/vibrava.jpg","t":["Ground","Dragon"]},"flygon":{"n":"Flygon","i":"https://img.pokemondb.net/sprites/home/normal/2x/flygon.jpg","t":["Ground","Dragon"]},"axew":{"n":"Axew","i":"https://img.pokemondb.net/sprites/home/normal/2x/axew.jpg","t":["Dragon"]},"fraxure":{"n":"Fraxure","i":"https://img.pokemondb.net/sprites/home/normal/2x/fraxure.jpg","t":["Dragon"]},"haxorus":{"n":"Haxorus","i":"https://img.pokemondb.net/sprites/home/normal/2x/haxorus.jpg","t":["Dragon"]},"yamask":{"n":"Yamask","i":"https://img.pokemondb.net/sprites/home/normal/2x/yamask-galarian.jpg","t":["Ground","Ghost"]},"runerigus":{"n":"Runerigus","i":"https://img.pokemondb.net/sprites/home/normal/2x/runerigus.jpg","t":["Ground","Ghost"]},"cofagrigus":{"n":"Cofagrigus","i":"https://img.pokemondb.net/sprites/home/normal/2x/cofagrigus.jpg","t":["Ghost"]},"honedge":{"n":"Honedge","i":"https://img.pokemondb.net/sprites/home/normal/2x/honedge.jpg","t":["Steel","Ghost"]},"doublade":{"n":"Doublade","i":"https://img.pokemondb.net/sprites/home/normal/2x/doublade.jpg","t":["Steel","Ghost"]},"aegislash":{"n":"Aegislash","i":"https://img.pokemondb.net/sprites/home/normal/2x/aegislash.jpg","t":["Steel","Ghost"]},"ponyta":{"n":"Ponyta","i":"https://img.pokemondb.net/sprites/home/normal/2x/ponyta-galarian.jpg","t":["Psychic"],"v":"shield"},"rapidash":{"n":"Rapidash","i":"https://img.pokemondb.net/sprites/home/normal/2x/rapidash-galarian.jpg","t":["Psychic","Fairy"],"v":"shield"},"sinistea":{"n":"Sinistea","i":"https://img.pokemondb.net/sprites/home/normal/2x/sinistea.jpg","t":["Ghost"]},"polteageist":{"n":"Polteageist","i":"https://img.pokemondb.net/sprites/home/normal/2x/polteageist.jpg","t":["Ghost"]},"indeedee":{"n":"Indeedee","i":"https://img.pokemondb.net/sprites/home/normal/2x/indeedee.jpg","t":["Psychic","Normal"],"v":"split"},"phantump":{"n":"Phantump","i":"https://img.pokemondb.net/sprites/home/normal/2x/phantump.jpg","t":["Ghost","Grass"]},"trevenant":{"n":"Trevenant","i":"https://img.pokemondb.net/sprites/home/normal/2x/trevenant.jpg","t":["Ghost","Grass"]},"morelull":{"n":"Morelull","i":"https://img.pokemondb.net/sprites/home/normal/2x/morelull.jpg","t":["Grass","Fairy"]},"shiinotic":{"n":"Shiinotic","i":"https://img.pokemondb.net/sprites/home/normal/2x/shiinotic.jpg","t":["Grass","Fairy"]},"oranguru":{"n":"Oranguru","i":"https://img.pokemondb.net/sprites/home/normal/2x/oranguru.jpg","t":["Normal","Psychic"],"v":"shield"},"passimian":{"n":"Passimian","i":"https://img.pokemondb.net/sprites/home/normal/2x/passimian.jpg","t":["Fighting"],"v":"sword"},"morpeko":{"n":"Morpeko","i":"https://img.pokemondb.net/sprites/home/normal/2x/morpeko.jpg","t":["Electric","Dark"]},"falinks":{"n":"Falinks","i":"https://img.pokemondb.net/sprites/home/normal/2x/falinks.jpg","t":["Fighting"]},"drampa":{"n":"Drampa","i":"https://img.pokemondb.net/sprites/home/normal/2x/drampa.jpg","t":["Normal","Dragon"],"v":"shield"},"turtonator":{"n":"Turtonator","i":"https://img.pokemondb.net/sprites/home/normal/2x/turtonator.jpg","t":["Fire","Dragon"],"v":"sword"},"togedemaru":{"n":"Togedemaru","i":"https://img.pokemondb.net/sprites/home/normal/2x/togedemaru.jpg","t":["Electric","Steel"]},"snom":{"n":"Snom","i":"https://img.pokemondb.net/sprites/home/normal/2x/snom.jpg","t":["Ice","Bug"]},"frosmoth":{"n":"Frosmoth","i":"https://img.pokemondb.net/sprites/home/normal/2x/frosmoth.jpg","t":["Ice","Bug"]},"clobbopus":{"n":"Clobbopus","i":"https://img.pokemondb.net/sprites/home/normal/2x/clobbopus.jpg","t":["Fighting"]},"grapploct":{"n":"Grapploct","i":"https://img.pokemondb.net/sprites/home/normal/2x/grapploct.jpg","t":["Fighting"]},"pincurchin":{"n":"Pincurchin","i":"https://img.pokemondb.net/sprites/home/normal/2x/pincurchin.jpg","t":["Electric"]},"mantyke":{"n":"Mantyke","i":"https://img.pokemondb.net/sprites/home/normal/2x/mantyke.jpg","t":["Water","Flying"]},"mantine":{"n":"Mantine","i":"https://img.pokemondb.net/sprites/home/normal/2x/mantine.jpg","t":["Water","Flying"]},"wailmer":{"n":"Wailmer","i":"https://img.pokemondb.net/sprites/home/normal/2x/wailmer.jpg","t":["Water"]},"wailord":{"n":"Wailord","i":"https://img.pokemondb.net/sprites/home/normal/2x/wailord.jpg","t":["Water"]},"bergmite":{"n":"Bergmite","i":"https://img.pokemondb.net/sprites/home/normal/2x/bergmite.jpg","t":["Ice"]},"avalugg":{"n":"Avalugg","i":"https://img.pokemondb.net/sprites/home/normal/2x/avalugg.jpg","t":["Ice"]},"dhelmise":{"n":"Dhelmise","i":"https://img.pokemondb.net/sprites/home/normal/2x/dhelmise.jpg","t":["Ghost","Grass"]},"lapras":{"n":"Lapras","i":"https://img.pokemondb.net/sprites/home/normal/2x/lapras.jpg","t":["Water","Ice"]},"lunatone":{"n":"Lunatone","i":"https://img.pokemondb.net/sprites/home/normal/2x/lunatone.jpg","t":["Rock","Psychic"],"v":"shield"},"solrock":{"n":"Solrock","i":"https://img.pokemondb.net/sprites/home/normal/2x/solrock.jpg","t":["Rock","Psychic"],"v":"sword"},"mime-jr":{"n":"Mime Jr.","i":"https://img.pokemondb.net/sprites/home/normal/2x/mime-jr.jpg","t":["Psychic","Fairy"]},"mr-mime":{"n":"Mr. Mime","i":"https://img.pokemondb.net/sprites/home/normal/2x/mr-mime-galarian.jpg","t":["Ice","Psychic"]},"mr-rime":{"n":"Mr. Rime","i":"https://img.pokemondb.net/sprites/home/normal/2x/mr-rime.jpg","t":["Ice","Psychic"]},"darumaka":{"n":"Darumaka","i":"https://img.pokemondb.net/sprites/home/normal/2x/darumaka-galarian.jpg","t":["Ice"],"v":"sword"},"darmanitan":{"n":"Darmanitan","i":"https://img.pokemondb.net/sprites/home/normal/2x/darmanitan-galarian-standard.jpg","t":["Ice"],"v":"sword"},"stonjourner":{"n":"Stonjourner","i":"https://img.pokemondb.net/sprites/home/normal/2x/stonjourner.jpg","t":["Rock"],"v":"sword"},"eiscue":{"n":"Eiscue","i":"https://img.pokemondb.net/sprites/home/normal/2x/eiscue.jpg","t":["Ice"],"v":"shield"},"duraludon":{"n":"Duraludon","i":"https://img.pokemondb.net/sprites/home/normal/2x/duraludon.jpg","t":["Steel","Dragon"]},"rotom":{"n":"Rotom","i":"https://img.pokemondb.net/sprites/home/normal/2x/rotom.jpg","t":["Electric","Ghost"]},"ditto":{"n":"Ditto","i":"https://img.pokemondb.net/sprites/home/normal/2x/ditto.jpg","t":["Normal"]},"dracozolt":{"n":"Dracozolt","i":"https://img.pokemondb.net/sprites/home/normal/2x/dracozolt.jpg","t":["Electric","Dragon"]},"arctozolt":{"n":"Arctozolt","i":"https://img.pokemondb.net/sprites/home/normal/2x/arctozolt.jpg","t":["Electric","Ice"]},"dracovish":{"n":"Dracovish","i":"https://img.pokemondb.net/sprites/home/normal/2x/dracovish.jpg","t":["Water","Dragon"]},"arctovish":{"n":"Arctovish","i":"https://img.pokemondb.net/sprites/home/normal/2x/arctovish.jpg","t":["Water","Ice"]},"charmander":{"n":"Charmander","i":"https://img.pokemondb.net/sprites/home/normal/2x/charmander.jpg","t":["Fire"]},"charmeleon":{"n":"Charmeleon","i":"https://img.pokemondb.net/sprites/home/normal/2x/charmeleon.jpg","t":["Fire"]},"charizard":{"n":"Charizard","i":"https://img.pokemondb.net/sprites/home/normal/2x/charizard.jpg","t":["Fire","Flying"]},"type-null":{"n":"Type: Null","i":"https://img.pokemondb.net/sprites/home/normal/2x/type-null.jpg","t":["Normal"]},"silvally":{"n":"Silvally","i":"https://img.pokemondb.net/sprites/home/normal/2x/silvally.jpg","t":["Normal"]},"larvitar":{"n":"Larvitar","i":"https://img.pokemondb.net/sprites/home/normal/2x/larvitar.jpg","t":["Rock","Ground"],"v":"shield"},"pupitar":{"n":"Pupitar","i":"https://img.pokemondb.net/sprites/home/normal/2x/pupitar.jpg","t":["Rock","Ground"],"v":"shield"},"tyranitar":{"n":"Tyranitar","i":"https://img.pokemondb.net/sprites/home/normal/2x/tyranitar.jpg","t":["Rock","Dark"],"v":"shield"},"deino":{"n":"Deino","i":"https://img.pokemondb.net/sprites/home/normal/2x/deino.jpg","t":["Dark","Dragon"],"v":"sword"},"zweilous":{"n":"Zweilous","i":"https://img.pokemondb.net/sprites/home/normal/2x/zweilous.jpg","t":["Dark","Dragon"],"v":"sword"},"hydreigon":{"n":"Hydreigon","i":"https://img.pokemondb.net/sprites/home/normal/2x/hydreigon.jpg","t":["Dark","Dragon"],"v":"sword"},"goomy":{"n":"Goomy","i":"https://img.pokemondb.net/sprites/home/normal/2x/goomy.jpg","t":["Dragon"],"v":"shield"},"sliggoo":{"n":"Sliggoo","i":"https://img.pokemondb.net/sprites/home/normal/2x/sliggoo.jpg","t":["Dragon"],"v":"shield"},"goodra":{"n":"Goodra","i":"https://img.pokemondb.net/sprites/home/normal/2x/goodra.jpg","t":["Dragon"],"v":"shield"},"jangmo-o":{"n":"Jangmo-o","i":"https://img.pokemondb.net/sprites/home/normal/2x/jangmo-o.jpg","t":["Dragon"],"v":"sword"},"hakamo-o":{"n":"Hakamo-o","i":"https://img.pokemondb.net/sprites/home/normal/2x/hakamo-o.jpg","t":["Dragon","Fighting"],"v":"sword"},"kommo-o":{"n":"Kommo-o","i":"https://img.pokemondb.net/sprites/home/normal/2x/kommo-o.jpg","t":["Dragon","Fighting"],"v":"sword"},"dreepy":{"n":"Dreepy","i":"https://img.pokemondb.net/sprites/home/normal/2x/dreepy.jpg","t":["Dragon","Ghost"]},"drakloak":{"n":"Drakloak","i":"https://img.pokemondb.net/sprites/home/normal/2x/drakloak.jpg","t":["Dragon","Ghost"]},"dragapult":{"n":"Dragapult","i":"https://img.pokemondb.net/sprites/home/normal/2x/dragapult.jpg","t":["Dragon","Ghost"]},"zacian":{"n":"Zacian","i":"https://img.pokemondb.net/sprites/home/normal/2x/zacian.jpg","t":["Fairy"]},"zamazenta":{"n":"Zamazenta","i":"https://img.pokemondb.net/sprites/home/normal/2x/zamazenta.jpg","t":["Fighting"]},"eternatus":{"n":"Eternatus","i":"https://img.pokemondb.net/sprites/home/normal/2x/eternatus.jpg","t":["Poison","Dragon"]},"slowpoke":{"n":"Slowpoke","i":"https://img.pokemondb.net/sprites/home/normal/2x/slowpoke-galarian.jpg","t":["Psychic"]},"slowbro":{"n":"Slowbro","i":"https://img.pokemondb.net/sprites/home/normal/2x/slowbro-galarian.jpg","t":["Poison","Psychic"]},"slowking":{"n":"Slowking","i":"https://img.pokemondb.net/sprites/home/normal/2x/slowking-galarian.jpg","t":["Poison","Psychic"]},"buneary":{"n":"Buneary","i":"https://img.pokemondb.net/sprites/home/normal/2x/buneary.jpg","t":["Normal"]},"lopunny":{"n":"Lopunny","i":"https://img.pokemondb.net/sprites/home/normal/2x/lopunny.jpg","t":["Normal"]},"happiny":{"n":"Happiny","i":"https://img.pokemondb.net/sprites/home/normal/2x/happiny.jpg","t":["Normal"]},"chansey":{"n":"Chansey","i":"https://img.pokemondb.net/sprites/home/normal/2x/chansey.jpg","t":["Normal"]},"blissey":{"n":"Blissey","i":"https://img.pokemondb.net/sprites/home/normal/2x/blissey.jpg","t":["Normal"]},"igglybuff":{"n":"Igglybuff","i":"https://img.pokemondb.net/sprites/home/normal/2x/igglybuff.jpg","t":["Normal","Fairy"]},"jigglypuff":{"n":"Jigglypuff","i":"https://img.pokemondb.net/sprites/home/normal/2x/jigglypuff.jpg","t":["Normal","Fairy"]},"wigglytuff":{"n":"Wigglytuff","i":"https://img.pokemondb.net/sprites/home/normal/2x/wigglytuff.jpg","t":["Normal","Fairy"]},"fomantis":{"n":"Fomantis","i":"https://img.pokemondb.net/sprites/home/normal/2x/fomantis.jpg","t":["Grass"]},"lurantis":{"n":"Lurantis","i":"https://img.pokemondb.net/sprites/home/normal/2x/lurantis.jpg","t":["Grass"]},"fletchling":{"n":"Fletchling","i":"https://img.pokemondb.net/sprites/home/normal/2x/fletchling.jpg","t":["Normal","Flying"]},"fletchinder":{"n":"Fletchinder","i":"https://img.pokemondb.net/sprites/home/normal/2x/fletchinder.jpg","t":["Fire","Flying"]},"talonflame":{"n":"Talonflame","i":"https://img.pokemondb.net/sprites/home/normal/2x/talonflame.jpg","t":["Fire","Flying"]},"shinx":{"n":"Shinx","i":"https://img.pokemondb.net/sprites/home/normal/2x/shinx.jpg","t":["Electric"]},"luxio":{"n":"Luxio","i":"https://img.pokemondb.net/sprites/home/normal/2x/luxio.jpg","t":["Electric"]},"luxray":{"n":"Luxray","i":"https://img.pokemondb.net/sprites/home/normal/2x/luxray.jpg","t":["Electric"]},"klefki":{"n":"Klefki","i":"https://img.pokemondb.net/sprites/home/normal/2x/klefki.jpg","t":["Steel","Fairy"]},"abra":{"n":"Abra","i":"https://img.pokemondb.net/sprites/home/normal/2x/abra.jpg","t":["Psychic"]},"kadabra":{"n":"Kadabra","i":"https://img.pokemondb.net/sprites/home/normal/2x/kadabra.jpg","t":["Psychic"]},"alakazam":{"n":"Alakazam","i":"https://img.pokemondb.net/sprites/home/normal/2x/alakazam.jpg","t":["Psychic"]},"tentacool":{"n":"Tentacool","i":"https://img.pokemondb.net/sprites/home/normal/2x/tentacool.jpg","t":["Water","Poison"]},"tentacruel":{"n":"Tentacruel","i":"https://img.pokemondb.net/sprites/home/normal/2x/tentacruel.jpg","t":["Water","Poison"]},"dunsparce":{"n":"Dunsparce","i":"https://img.pokemondb.net/sprites/home/normal/2x/dunsparce.jpg","t":["Normal"]},"bouffalant":{"n":"Bouffalant","i":"https://img.pokemondb.net/sprites/home/normal/2x/bouffalant.jpg","t":["Normal"]},"lickitung":{"n":"Lickitung","i":"https://img.pokemondb.net/sprites/home/normal/2x/lickitung.jpg","t":["Normal"]},"lickilicky":{"n":"Lickilicky","i":"https://img.pokemondb.net/sprites/home/normal/2x/lickilicky.jpg","t":["Normal"]},"druddigon":{"n":"Druddigon","i":"https://img.pokemondb.net/sprites/home/normal/2x/druddigon.jpg","t":["Dragon"]},"bulbasaur":{"n":"Bulbasaur","i":"https://img.pokemondb.net/sprites/home/normal/2x/bulbasaur.jpg","t":["Grass","Poison"]},"ivysaur":{"n":"Ivysaur","i":"https://img.pokemondb.net/sprites/home/normal/2x/ivysaur.jpg","t":["Grass","Poison"]},"venusaur":{"n":"Venusaur","i":"https://img.pokemondb.net/sprites/home/normal/2x/venusaur.jpg","t":["Grass","Poison"]},"squirtle":{"n":"Squirtle","i":"https://img.pokemondb.net/sprites/home/normal/2x/squirtle.jpg","t":["Water"]},"wartortle":{"n":"Wartortle","i":"https://img.pokemondb.net/sprites/home/normal/2x/wartortle.jpg","t":["Water"]},"blastoise":{"n":"Blastoise","i":"https://img.pokemondb.net/sprites/home/normal/2x/blastoise.jpg","t":["Water"]},"venipede":{"n":"Venipede","i":"https://img.pokemondb.net/sprites/home/normal/2x/venipede.jpg","t":["Bug","Poison"]},"whirlipede":{"n":"Whirlipede","i":"https://img.pokemondb.net/sprites/home/normal/2x/whirlipede.jpg","t":["Bug","Poison"]},"scolipede":{"n":"Scolipede","i":"https://img.pokemondb.net/sprites/home/normal/2x/scolipede.jpg","t":["Bug","Poison"]},"foongus":{"n":"Foongus","i":"https://img.pokemondb.net/sprites/home/normal/2x/foongus.jpg","t":["Grass","Poison"]},"amoonguss":{"n":"Amoonguss","i":"https://img.pokemondb.net/sprites/home/normal/2x/amoonguss.jpg","t":["Grass","Poison"]},"comfey":{"n":"Comfey","i":"https://img.pokemondb.net/sprites/home/normal/2x/comfey.jpg","t":["Fairy"]},"tangela":{"n":"Tangela","i":"https://img.pokemondb.net/sprites/home/normal/2x/tangela.jpg","t":["Grass"]},"tangrowth":{"n":"Tangrowth","i":"https://img.pokemondb.net/sprites/home/normal/2x/tangrowth.jpg","t":["Grass"]},"zorua":{"n":"Zorua","i":"https://img.pokemondb.net/sprites/home/normal/2x/zorua.jpg","t":["Dark"]},"zoroark":{"n":"Zoroark","i":"https://img.pokemondb.net/sprites/home/normal/2x/zoroark.jpg","t":["Dark"]},"staryu":{"n":"Staryu","i":"https://img.pokemondb.net/sprites/home/normal/2x/staryu.jpg","t":["Water"]},"starmie":{"n":"Starmie","i":"https://img.pokemondb.net/sprites/home/normal/2x/starmie.jpg","t":["Water","Psychic"]},"kubfu":{"n":"Kubfu","i":"https://img.pokemondb.net/sprites/home/normal/2x/kubfu.jpg","t":["Fighting"]},"urshifu":{"n":"Urshifu","i":"https://img.pokemondb.net/sprites/home/normal/2x/urshifu.jpg","t":["Fighting","Dark"]},"emolga":{"n":"Emolga","i":"https://img.pokemondb.net/sprites/home/normal/2x/emolga.jpg","t":["Electric","Flying"]},"dedenne":{"n":"Dedenne","i":"https://img.pokemondb.net/sprites/home/normal/2x/dedenne.jpg","t":["Electric","Fairy"]},"magnemite":{"n":"Magnemite","i":"https://img.pokemondb.net/sprites/home/normal/2x/magnemite.jpg","t":["Electric","Steel"]},"magneton":{"n":"Magneton","i":"https://img.pokemondb.net/sprites/home/normal/2x/magneton.jpg","t":["Electric","Steel"]},"magnezone":{"n":"Magnezone","i":"https://img.pokemondb.net/sprites/home/normal/2x/magnezone.jpg","t":["Electric","Steel"]},"carvanha":{"n":"Carvanha","i":"https://img.pokemondb.net/sprites/home/normal/2x/carvanha.jpg","t":["Water","Dark"]},"sharpedo":{"n":"Sharpedo","i":"https://img.pokemondb.net/sprites/home/normal/2x/sharpedo.jpg","t":["Water","Dark"]},"lillipup":{"n":"Lillipup","i":"https://img.pokemondb.net/sprites/home/normal/2x/lillipup.jpg","t":["Normal"]},"herdier":{"n":"Herdier","i":"https://img.pokemondb.net/sprites/home/normal/2x/herdier.jpg","t":["Normal"]},"stoutland":{"n":"Stoutland","i":"https://img.pokemondb.net/sprites/home/normal/2x/stoutland.jpg","t":["Normal"]},"tauros":{"n":"Tauros","i":"https://img.pokemondb.net/sprites/home/normal/2x/tauros.jpg","t":["Normal"]},"miltank":{"n":"Miltank","i":"https://img.pokemondb.net/sprites/home/normal/2x/miltank.jpg","t":["Normal"]},"scyther":{"n":"Scyther","i":"https://img.pokemondb.net/sprites/home/normal/2x/scyther.jpg","t":["Bug","Flying"]},"scizor":{"n":"Scizor","i":"https://img.pokemondb.net/sprites/home/normal/2x/scizor.jpg","t":["Bug","Steel"]},"pinsir":{"n":"Pinsir","i":"https://img.pokemondb.net/sprites/home/normal/2x/pinsir.jpg","t":["Bug"],"v":"sword"},"heracross":{"n":"Heracross","i":"https://img.pokemondb.net/sprites/home/normal/2x/heracross.jpg","t":["Bug","Fighting"],"v":"shield"},"sandygast":{"n":"Sandygast","i":"https://img.pokemondb.net/sprites/home/normal/2x/sandygast.jpg","t":["Ghost","Ground"]},"palossand":{"n":"Palossand","i":"https://img.pokemondb.net/sprites/home/normal/2x/palossand.jpg","t":["Ghost","Ground"]},"azurill":{"n":"Azurill","i":"https://img.pokemondb.net/sprites/home/normal/2x/azurill.jpg","t":["Normal","Fairy"]},"marill":{"n":"Marill","i":"https://img.pokemondb.net/sprites/home/normal/2x/marill.jpg","t":["Water","Fairy"]},"azumarill":{"n":"Azumarill","i":"https://img.pokemondb.net/sprites/home/normal/2x/azumarill.jpg","t":["Water","Fairy"]},"poliwag":{"n":"Poliwag","i":"https://img.pokemondb.net/sprites/home/normal/2x/poliwag.jpg","t":["Water"]},"poliwhirl":{"n":"Poliwhirl","i":"https://img.pokemondb.net/sprites/home/normal/2x/poliwhirl.jpg","t":["Water"]},"poliwrath":{"n":"Poliwrath","i":"https://img.pokemondb.net/sprites/home/normal/2x/poliwrath.jpg","t":["Water","Fighting"]},"politoed":{"n":"Politoed","i":"https://img.pokemondb.net/sprites/home/normal/2x/politoed.jpg","t":["Water"]},"psyduck":{"n":"Psyduck","i":"https://img.pokemondb.net/sprites/home/normal/2x/psyduck.jpg","t":["Water"]},"golduck":{"n":"Golduck","i":"https://img.pokemondb.net/sprites/home/normal/2x/golduck.jpg","t":["Water"]},"whismur":{"n":"Whismur","i":"https://img.pokemondb.net/sprites/home/normal/2x/whismur.jpg","t":["Normal"]},"loudred":{"n":"Loudred","i":"https://img.pokemondb.net/sprites/home/normal/2x/loudred.jpg","t":["Normal"]},"exploud":{"n":"Exploud","i":"https://img.pokemondb.net/sprites/home/normal/2x/exploud.jpg","t":["Normal"]},"skarmory":{"n":"Skarmory","i":"https://img.pokemondb.net/sprites/home/normal/2x/skarmory.jpg","t":["Steel","Flying"]},"rockruff":{"n":"Rockruff","i":"https://img.pokemondb.net/sprites/home/normal/2x/rockruff.jpg","t":["Rock"]},"lycanroc":{"n":"Lycanroc","i":"https://img.pokemondb.net/sprites/home/normal/2x/lycanroc.jpg","t":["Rock"]},"mienfoo":{"n":"Mienfoo","i":"https://img.pokemondb.net/sprites/home/normal/2x/mienfoo.jpg","t":["Fighting"]},"mienshao":{"n":"Mienshao","i":"https://img.pokemondb.net/sprites/home/normal/2x/mienshao.jpg","t":["Fighting"]},"sandshrew":{"n":"Sandshrew","i":"https://img.pokemondb.net/sprites/home/normal/2x/sandshrew.jpg","t":["Ground"]},"sandslash":{"n":"Sandslash","i":"https://img.pokemondb.net/sprites/home/normal/2x/sandslash.jpg","t":["Ground"]},"cubone":{"n":"Cubone","i":"https://img.pokemondb.net/sprites/home/normal/2x/cubone.jpg","t":["Ground"]},"marowak":{"n":"Marowak","i":"https://img.pokemondb.net/sprites/home/normal/2x/marowak.jpg","t":["Ground"]},"kangaskhan":{"n":"Kangaskhan","i":"https://img.pokemondb.net/sprites/home/normal/2x/kangaskhan.jpg","t":["Normal"]},"sandile":{"n":"Sandile","i":"https://img.pokemondb.net/sprites/home/normal/2x/sandile.jpg","t":["Ground","Dark"]},"krokorok":{"n":"Krokorok","i":"https://img.pokemondb.net/sprites/home/normal/2x/krokorok.jpg","t":["Ground","Dark"]},"krookodile":{"n":"Krookodile","i":"https://img.pokemondb.net/sprites/home/normal/2x/krookodile.jpg","t":["Ground","Dark"]},"larvesta":{"n":"Larvesta","i":"https://img.pokemondb.net/sprites/home/normal/2x/larvesta.jpg","t":["Bug","Fire"]},"volcarona":{"n":"Volcarona","i":"https://img.pokemondb.net/sprites/home/normal/2x/volcarona.jpg","t":["Bug","Fire"]},"skrelp":{"n":"Skrelp","i":"https://img.pokemondb.net/sprites/home/normal/2x/skrelp.jpg","t":["Poison","Water"],"v":"shield"},"dragalge":{"n":"Dragalge","i":"https://img.pokemondb.net/sprites/home/normal/2x/dragalge.jpg","t":["Poison","Dragon"],"v":"shield"},"clauncher":{"n":"Clauncher","i":"https://img.pokemondb.net/sprites/home/normal/2x/clauncher.jpg","t":["Water"],"v":"sword"},"clawitzer":{"n":"Clawitzer","i":"https://img.pokemondb.net/sprites/home/normal/2x/clawitzer.jpg","t":["Water"],"v":"sword"},"horsea":{"n":"Horsea","i":"https://img.pokemondb.net/sprites/home/normal/2x/horsea.jpg","t":["Water"]},"seadra":{"n":"Seadra","i":"https://img.pokemondb.net/sprites/home/normal/2x/seadra.jpg","t":["Water"]},"kingdra":{"n":"Kingdra","i":"https://img.pokemondb.net/sprites/home/normal/2x/kingdra.jpg","t":["Water","Dragon"]},"petilil":{"n":"Petilil","i":"https://img.pokemondb.net/sprites/home/normal/2x/petilil.jpg","t":["Grass"]},"lilligant":{"n":"Lilligant","i":"https://img.pokemondb.net/sprites/home/normal/2x/lilligant.jpg","t":["Grass"]},"exeggcute":{"n":"Exeggcute","i":"https://img.pokemondb.net/sprites/home/normal/2x/exeggcute.jpg","t":["Grass","Psychic"]},"exeggutor":{"n":"Exeggutor","i":"https://img.pokemondb.net/sprites/home/normal/2x/exeggutor.jpg","t":["Grass","Psychic"]},"porygon":{"n":"Porygon","i":"https://img.pokemondb.net/sprites/home/normal/2x/porygon.jpg","t":["Normal"]},"porygon2":{"n":"Porygon2","i":"https://img.pokemondb.net/sprites/home/normal/2x/porygon2.jpg","t":["Normal"]},"porygon-z":{"n":"Porygon-Z","i":"https://img.pokemondb.net/sprites/home/normal/2x/porygon-z.jpg","t":["Normal"]},"zarude":{"n":"Zarude","i":"https://img.pokemondb.net/sprites/home/normal/2x/zarude.jpg","t":["Dark","Grass"]},"smoochum":{"n":"Smoochum","i":"https://img.pokemondb.net/sprites/home/normal/2x/smoochum.jpg","t":["Ice","Psychic"]},"jynx":{"n":"Jynx","i":"https://img.pokemondb.net/sprites/home/normal/2x/jynx.jpg","t":["Ice","Psychic"]},"elekid":{"n":"Elekid","i":"https://img.pokemondb.net/sprites/home/normal/2x/elekid.jpg","t":["Electric"]},"electabuzz":{"n":"Electabuzz","i":"https://img.pokemondb.net/sprites/home/normal/2x/electabuzz.jpg","t":["Electric"]},"electivire":{"n":"Electivire","i":"https://img.pokemondb.net/sprites/home/normal/2x/electivire.jpg","t":["Electric"]},"magby":{"n":"Magby","i":"https://img.pokemondb.net/sprites/home/normal/2x/magby.jpg","t":["Fire"]},"magmar":{"n":"Magmar","i":"https://img.pokemondb.net/sprites/home/normal/2x/magmar.jpg","t":["Fire"]},"magmortar":{"n":"Magmortar","i":"https://img.pokemondb.net/sprites/home/normal/2x/magmortar.jpg","t":["Fire"]},"audino":{"n":"Audino","i":"https://img.pokemondb.net/sprites/home/normal/2x/audino.jpg","t":["Normal"]},"cryogonal":{"n":"Cryogonal","i":"https://img.pokemondb.net/sprites/home/normal/2x/cryogonal.jpg","t":["Ice"]},"swablu":{"n":"Swablu","i":"https://img.pokemondb.net/sprites/home/normal/2x/swablu.jpg","t":["Normal","Flying"]},"altaria":{"n":"Altaria","i":"https://img.pokemondb.net/sprites/home/normal/2x/altaria.jpg","t":["Dragon","Flying"]},"spiritomb":{"n":"Spiritomb","i":"https://img.pokemondb.net/sprites/home/normal/2x/spiritomb.jpg","t":["Ghost","Dark"]},"nidoran-f":{"n":"Nidoran♀","i":"https://img.pokemondb.net/sprites/home/normal/2x/nidoran-f.jpg","t":["Poison"]},"nidorina":{"n":"Nidorina","i":"https://img.pokemondb.net/sprites/home/normal/2x/nidorina.jpg","t":["Poison"]},"nidoqueen":{"n":"Nidoqueen","i":"https://img.pokemondb.net/sprites/home/normal/2x/nidoqueen.jpg","t":["Poison","Ground"]},"nidoran-m":{"n":"Nidoran♂","i":"https://img.pokemondb.net/sprites/home/normal/2x/nidoran-m.jpg","t":["Poison"]},"nidorino":{"n":"Nidorino","i":"https://img.pokemondb.net/sprites/home/normal/2x/nidorino.jpg","t":["Poison"]},"nidoking":{"n":"Nidoking","i":"https://img.pokemondb.net/sprites/home/normal/2x/nidoking.jpg","t":["Poison","Ground"]},"tyrunt":{"n":"Tyrunt","i":"https://img.pokemondb.net/sprites/home/normal/2x/tyrunt.jpg","t":["Rock","Dragon"]},"tyrantrum":{"n":"Tyrantrum","i":"https://img.pokemondb.net/sprites/home/normal/2x/tyrantrum.jpg","t":["Rock","Dragon"]},"amaura":{"n":"Amaura","i":"https://img.pokemondb.net/sprites/home/normal/2x/amaura.jpg","t":["Rock","Ice"]},"aurorus":{"n":"Aurorus","i":"https://img.pokemondb.net/sprites/home/normal/2x/aurorus.jpg","t":["Rock","Ice"]},"absol":{"n":"Absol","i":"https://img.pokemondb.net/sprites/home/normal/2x/absol.jpg","t":["Dark"]},"bagon":{"n":"Bagon","i":"https://img.pokemondb.net/sprites/home/normal/2x/bagon.jpg","t":["Dragon"],"v":"sword"},"shelgon":{"n":"Shelgon","i":"https://img.pokemondb.net/sprites/home/normal/2x/shelgon.jpg","t":["Dragon"],"v":"sword"},"salamence":{"n":"Salamence","i":"https://img.pokemondb.net/sprites/home/normal/2x/salamence.jpg","t":["Dragon","Flying"],"v":"sword"},"gible":{"n":"Gible","i":"https://img.pokemondb.net/sprites/home/normal/2x/gible.jpg","t":["Dragon","Ground"],"v":"shield"},"gabite":{"n":"Gabite","i":"https://img.pokemondb.net/sprites/home/normal/2x/gabite.jpg","t":["Dragon","Ground"],"v":"shield"},"garchomp":{"n":"Garchomp","i":"https://img.pokemondb.net/sprites/home/normal/2x/garchomp.jpg","t":["Dragon","Ground"],"v":"shield"},"omanyte":{"n":"Omanyte","i":"https://img.pokemondb.net/sprites/home/normal/2x/omanyte.jpg","t":["Rock","Water"],"v":"sword"},"omastar":{"n":"Omastar","i":"https://img.pokemondb.net/sprites/home/normal/2x/omastar.jpg","t":["Rock","Water"],"v":"sword"},"kabuto":{"n":"Kabuto","i":"https://img.pokemondb.net/sprites/home/normal/2x/kabuto.jpg","t":["Rock","Water"],"v":"shield"},"kabutops":{"n":"Kabutops","i":"https://img.pokemondb.net/sprites/home/normal/2x/kabutops.jpg","t":["Rock","Water"],"v":"shield"},"aerodactyl":{"n":"Aerodactyl","i":"https://img.pokemondb.net/sprites/home/normal/2x/aerodactyl.jpg","t":["Rock","Flying"]},"carbink":{"n":"Carbink","i":"https://img.pokemondb.net/sprites/home/normal/2x/carbink.jpg","t":["Rock","Fairy"]},"beldum":{"n":"Beldum","i":"https://img.pokemondb.net/sprites/home/normal/2x/beldum.jpg","t":["Steel","Psychic"]},"metang":{"n":"Metang","i":"https://img.pokemondb.net/sprites/home/normal/2x/metang.jpg","t":["Steel","Psychic"]},"metagross":{"n":"Metagross","i":"https://img.pokemondb.net/sprites/home/normal/2x/metagross.jpg","t":["Steel","Psychic"]},"zubat":{"n":"Zubat","i":"https://img.pokemondb.net/sprites/home/normal/2x/zubat.jpg","t":["Poison","Flying"]},"golbat":{"n":"Golbat","i":"https://img.pokemondb.net/sprites/home/normal/2x/golbat.jpg","t":["Poison","Flying"]},"crobat":{"n":"Crobat","i":"https://img.pokemondb.net/sprites/home/normal/2x/crobat.jpg","t":["Poison","Flying"]},"tirtouga":{"n":"Tirtouga","i":"https://img.pokemondb.net/sprites/home/normal/2x/tirtouga.jpg","t":["Water","Rock"]},"carracosta":{"n":"Carracosta","i":"https://img.pokemondb.net/sprites/home/normal/2x/carracosta.jpg","t":["Water","Rock"]},"archen":{"n":"Archen","i":"https://img.pokemondb.net/sprites/home/normal/2x/archen.jpg","t":["Rock","Flying"]},"archeops":{"n":"Archeops","i":"https://img.pokemondb.net/sprites/home/normal/2x/archeops.jpg","t":["Rock","Flying"]},"spheal":{"n":"Spheal","i":"https://img.pokemondb.net/sprites/home/normal/2x/spheal.jpg","t":["Ice","Water"]},"sealeo":{"n":"Sealeo","i":"https://img.pokemondb.net/sprites/home/normal/2x/sealeo.jpg","t":["Ice","Water"]},"walrein":{"n":"Walrein","i":"https://img.pokemondb.net/sprites/home/normal/2x/walrein.jpg","t":["Ice","Water"]},"lileep":{"n":"Lileep","i":"https://img.pokemondb.net/sprites/home/normal/2x/lileep.jpg","t":["Rock","Grass"]},"cradily":{"n":"Cradily","i":"https://img.pokemondb.net/sprites/home/normal/2x/cradily.jpg","t":["Rock","Grass"]},"anorith":{"n":"Anorith","i":"https://img.pokemondb.net/sprites/home/normal/2x/anorith.jpg","t":["Rock","Bug"]},"armaldo":{"n":"Armaldo","i":"https://img.pokemondb.net/sprites/home/normal/2x/armaldo.jpg","t":["Rock","Bug"]},"relicanth":{"n":"Relicanth","i":"https://img.pokemondb.net/sprites/home/normal/2x/relicanth.jpg","t":["Water","Rock"]},"aron":{"n":"Aron","i":"https://img.pokemondb.net/sprites/home/normal/2x/aron.jpg","t":["Steel","Rock"]},"lairon":{"n":"Lairon","i":"https://img.pokemondb.net/sprites/home/normal/2x/lairon.jpg","t":["Steel","Rock"]},"aggron":{"n":"Aggron","i":"https://img.pokemondb.net/sprites/home/normal/2x/aggron.jpg","t":["Steel","Rock"]},"dratini":{"n":"Dratini","i":"https://img.pokemondb.net/sprites/home/normal/2x/dratini.jpg","t":["Dragon"]},"dragonair":{"n":"Dragonair","i":"https://img.pokemondb.net/sprites/home/normal/2x/dragonair.jpg","t":["Dragon"]},"dragonite":{"n":"Dragonite","i":"https://img.pokemondb.net/sprites/home/normal/2x/dragonite.jpg","t":["Dragon","Flying"]},"regirock":{"n":"Regirock","i":"https://img.pokemondb.net/sprites/home/normal/2x/regirock.jpg","t":["Rock"]},"regice":{"n":"Regice","i":"https://img.pokemondb.net/sprites/home/normal/2x/regice.jpg","t":["Ice"]},"registeel":{"n":"Registeel","i":"https://img.pokemondb.net/sprites/home/normal/2x/registeel.jpg","t":["Steel"]},"regieleki":{"n":"Regieleki","i":"https://img.pokemondb.net/sprites/home/normal/2x/regieleki.jpg","t":["Electric"]},"regidrago":{"n":"Regidrago","i":"https://img.pokemondb.net/sprites/home/normal/2x/regidrago.jpg","t":["Dragon"]},"articuno":{"n":"Articuno","i":"https://img.pokemondb.net/sprites/home/normal/2x/articuno-galarian.jpg","t":["Psychic","Flying"]},"zapdos":{"n":"Zapdos","i":"https://img.pokemondb.net/sprites/home/normal/2x/zapdos-galarian.jpg","t":["Fighting","Flying"]},"moltres":{"n":"Moltres","i":"https://img.pokemondb.net/sprites/home/normal/2x/moltres-galarian.jpg","t":["Dark","Flying"]},"cobalion":{"n":"Cobalion","i":"https://img.pokemondb.net/sprites/home/normal/2x/cobalion.jpg","t":["Steel","Fighting"]},"terrakion":{"n":"Terrakion","i":"https://img.pokemondb.net/sprites/home/normal/2x/terrakion.jpg","t":["Rock","Fighting"]},"virizion":{"n":"Virizion","i":"https://img.pokemondb.net/sprites/home/normal/2x/virizion.jpg","t":["Grass","Fighting"]},"glastrier":{"n":"Glastrier","i":"https://img.pokemondb.net/sprites/home/normal/2x/glastrier.jpg","t":["Ice"]},"spectrier":{"n":"Spectrier","i":"https://img.pokemondb.net/sprites/home/normal/2x/spectrier.jpg","t":["Ghost"]},"calyrex":{"n":"Calyrex","i":"https://img.pokemondb.net/sprites/home/normal/2x/calyrex.jpg","t":["Psychic","Grass"]}},"sections":[{"id":"base","label":"Galar Dex (Base Game)","slugs":["grookey","thwackey","rillaboom","scorbunny","raboot","cinderace","sobble","drizzile","inteleon","blipbug","dottler","orbeetle","caterpie","metapod","butterfree","grubbin","charjabug","vikavolt","hoothoot","noctowl","rookidee","corvisquire","corviknight","skwovet","greedent","pidove","tranquill","unfezant","nickit","thievul","zigzagoon","linoone","obstagoon","wooloo","dubwool","lotad","lombre","ludicolo","seedot","nuzleaf","shiftry","chewtle","drednaw","purrloin","liepard","yamper","boltund","bunnelby","diggersby","minccino","cinccino","bounsweet","steenee","tsareena","oddish","gloom","vileplume","bellossom","budew","roselia","roserade","wingull","pelipper","joltik","galvantula","electrike","manectric","vulpix","ninetales","growlithe","arcanine","vanillite","vanillish","vanilluxe","swinub","piloswine","mamoswine","delibird","snorunt","glalie","froslass","baltoy","claydol","mudbray","mudsdale","dwebble","crustle","golett","golurk","munna","musharna","natu","xatu","stufful","bewear","snover","abomasnow","krabby","kingler","wooper","quagsire","corphish","crawdaunt","nincada","ninjask","shedinja","tyrogue","hitmonlee","hitmonchan","hitmontop","pancham","pangoro","klink","klang","klinklang","combee","vespiquen","bronzor","bronzong","ralts","kirlia","gardevoir","gallade","drifloon","drifblim","gossifleur","eldegoss","cherubi","cherrim","stunky","skuntank","tympole","palpitoad","seismitoad","duskull","dusclops","dusknoir","machop","machoke","machamp","gastly","haunter","gengar","magikarp","gyarados","goldeen","seaking","remoraid","octillery","shellder","cloyster","feebas","milotic","basculin","wishiwashi","pyukumuku","trubbish","garbodor","sizzlipede","centiskorch","rolycoly","carkol","coalossal","diglett","dugtrio","drilbur","excadrill","roggenrola","boldore","gigalith","timburr","gurdurr","conkeldurr","woobat","swoobat","noibat","noivern","onix","steelix","arrokuda","barraskewda","meowth","perrserker","persian","milcery","alcremie","cutiefly","ribombee","ferroseed","ferrothorn","pumpkaboo","gourgeist","pichu","pikachu","raichu","eevee","vaporeon","jolteon","flareon","espeon","umbreon","leafeon","glaceon","sylveon","applin","flapple","appletun","espurr","meowstic","swirlix","slurpuff","spritzee","aromatisse","dewpider","araquanid","wynaut","wobbuffet","farfetchd","sirfetchd","chinchou","lanturn","croagunk","toxicroak","scraggy","scrafty","stunfisk","shuckle","barboach","whiscash","shellos","gastrodon","wimpod","golisopod","binacle","barbaracle","corsola","cursola","impidimp","morgrem","grimmsnarl","hatenna","hattrem","hatterene","salandit","salazzle","pawniard","bisharp","throh","sawk","koffing","weezing","bonsly","sudowoodo","cleffa","clefairy","clefable","togepi","togetic","togekiss","munchlax","snorlax","cottonee","whimsicott","rhyhorn","rhydon","rhyperior","gothita","gothorita","gothitelle","solosis","duosion","reuniclus","karrablast","escavalier","shelmet","accelgor","elgyem","beheeyem","cubchoo","beartic","rufflet","braviary","vullaby","mandibuzz","skorupi","drapion","litwick","lampent","chandelure","inkay","malamar","sneasel","weavile","sableye","mawile","maractus","sigilyph","riolu","lucario","torkoal","mimikyu","cufant","copperajah","qwilfish","frillish","jellicent","mareanie","toxapex","cramorant","toxel","toxtricity","silicobra","sandaconda","hippopotas","hippowdon","durant","heatmor","helioptile","heliolisk","hawlucha","trapinch","vibrava","flygon","axew","fraxure","haxorus","yamask","runerigus","cofagrigus","honedge","doublade","aegislash","ponyta","rapidash","sinistea","polteageist","indeedee","phantump","trevenant","morelull","shiinotic","oranguru","passimian","morpeko","falinks","drampa","turtonator","togedemaru","snom","frosmoth","clobbopus","grapploct","pincurchin","mantyke","mantine","wailmer","wailord","bergmite","avalugg","dhelmise","lapras","lunatone","solrock","mime-jr","mr-mime","mr-rime","darumaka","darmanitan","stonjourner","eiscue","duraludon","rotom","ditto","dracozolt","arctozolt","dracovish","arctovish","charmander","charmeleon","charizard","type-null","silvally","larvitar","pupitar","tyranitar","deino","zweilous","hydreigon","goomy","sliggoo","goodra","jangmo-o","hakamo-o","kommo-o","dreepy","drakloak","dragapult","zacian","zamazenta","eternatus"]},{"id":"isle","label":"Isle of Armor","slugs":["slowpoke","slowbro","slowking","buneary","lopunny","happiny","chansey","blissey","skwovet","greedent","igglybuff","jigglypuff","wigglytuff","blipbug","dottler","orbeetle","fomantis","lurantis","applin","flapple","appletun","fletchling","fletchinder","talonflame","shinx","luxio","luxray","klefki","pawniard","bisharp","abra","kadabra","alakazam","ralts","kirlia","gardevoir","gallade","krabby","kingler","tentacool","tentacruel","magikarp","gyarados","remoraid","octillery","mantyke","mantine","wingull","pelipper","skorupi","drapion","dunsparce","bouffalant","lickitung","lickilicky","chewtle","drednaw","wooper","quagsire","goomy","sliggoo","goodra","druddigon","shelmet","accelgor","karrablast","escavalier","bulbasaur","ivysaur","venusaur","squirtle","wartortle","blastoise","venipede","whirlipede","scolipede","foongus","amoonguss","comfey","tangela","tangrowth","croagunk","toxicroak","pichu","pikachu","raichu","zorua","zoroark","oranguru","passimian","corphish","crawdaunt","cramorant","goldeen","seaking","arrokuda","barraskewda","staryu","starmie","kubfu","urshifu","emolga","dedenne","morpeko","magnemite","magneton","magnezone","inkay","malamar","wishiwashi","carvanha","sharpedo","lillipup","herdier","stoutland","tauros","miltank","scyther","scizor","pinsir","heracross","dwebble","crustle","wimpod","golisopod","pincurchin","mareanie","toxapex","clobbopus","grapploct","shellder","cloyster","sandygast","palossand","drifloon","drifblim","barboach","whiscash","azurill","marill","azumarill","poliwag","poliwhirl","poliwrath","politoed","psyduck","golduck","whismur","loudred","exploud","woobat","swoobat","skarmory","roggenrola","boldore","gigalith","rockruff","lycanroc","salandit","salazzle","scraggy","scrafty","mienfoo","mienshao","jangmo-o","hakamo-o","kommo-o","sandshrew","sandslash","cubone","marowak","kangaskhan","torkoal","silicobra","sandaconda","sandile","krokorok","krookodile","rufflet","braviary","vullaby","mandibuzz","rhyhorn","rhydon","rhyperior","larvesta","volcarona","chinchou","lanturn","wailmer","wailord","frillish","jellicent","skrelp","dragalge","clauncher","clawitzer","horsea","seadra","kingdra","petilil","lilligant","combee","vespiquen","exeggcute","exeggutor","ditto","porygon","porygon2","porygon-z","zarude"]},{"id":"crown","label":"Crown Tundra","slugs":["snom","frosmoth","wooloo","dubwool","skwovet","greedent","swinub","piloswine","mamoswine","mime-jr","mr-mime","mr-rime","smoochum","jynx","elekid","electabuzz","electivire","magby","magmar","magmortar","audino","vanillite","vanillish","vanilluxe","snorunt","glalie","froslass","sneasel","weavile","cryogonal","snover","abomasnow","phantump","trevenant","swablu","altaria","impidimp","morgrem","grimmsnarl","hatenna","hattrem","hatterene","cleffa","clefairy","clefable","mimikyu","spiritomb","litwick","lampent","chandelure","gothita","gothorita","gothitelle","solosis","duosion","reuniclus","timburr","gurdurr","conkeldurr","barboach","whiscash","magikarp","gyarados","basculin","nidoran-f","nidorina","nidoqueen","nidoran-m","nidorino","nidoking","zigzagoon","linoone","obstagoon","eevee","vaporeon","jolteon","flareon","umbreon","espeon","glaceon","leafeon","sylveon","tyrunt","tyrantrum","amaura","aurorus","bronzor","bronzong","stonjourner","eiscue","dewpider","araquanid","joltik","galvantula","karrablast","escavalier","shelmet","accelgor","sizzlipede","centiskorch","durant","heatmor","darumaka","darmanitan","ponyta","rapidash","absol","cufant","copperajah","dreepy","drakloak","dragapult","bagon","shelgon","salamence","gible","gabite","garchomp","druddigon","delibird","cubchoo","beartic","omanyte","omastar","kabuto","kabutops","aerodactyl","carbink","beldum","metang","metagross","sinistea","polteageist","riolu","lucario","deino","zweilous","hydreigon","larvitar","pupitar","tyranitar","bergmite","avalugg","zubat","golbat","crobat","tirtouga","carracosta","archen","archeops","baltoy","claydol","golett","golurk","yamper","boltund","morpeko","pincurchin","spheal","sealeo","walrein","dhelmise","rookidee","corvisquire","corviknight","gossifleur","eldegoss","cottonee","whimsicott","shuckle","indeedee","munchlax","snorlax","sableye","mawile","rolycoly","carkol","coalossal","ferroseed","ferrothorn","noibat","noivern","lileep","cradily","anorith","armaldo","relicanth","feebas","milotic","lapras","aron","lairon","aggron","dratini","dragonair","dragonite","regirock","regice","registeel","regieleki","regidrago","articuno","zapdos","moltres","cobalion","terrakion","virizion","glastrier","spectrier","calyrex"]}]};
+const GAME_KEY = "pokedex-sword-shield-v1"; // per-game storage key; other games use their own key so catches never sync between them.
+
+let state = {};
+try {
+  state = JSON.parse(localStorage.getItem(GAME_KEY) || "{}");
+} catch (e) { state = {}; }
+
+function saveState() {
+  try {
+    localStorage.setItem(GAME_KEY, JSON.stringify(state));
+  } catch (e) { /* storage unavailable, ignore */ }
+}
+
+function isCaught(slug) {
+  return !!state[slug];
+}
+
+function toggleCaught(slug) {
+  state[slug] = !state[slug];
+  if (!state[slug]) delete state[slug];
+  saveState();
+  updateCardEls(slug);
+  updateProgress();
+}
+
+function updateCardEls(slug) {
+  document.querySelectorAll('.card[data-slug="' + slug + '"]').forEach(function(el) {
+    el.classList.toggle('caught', isCaught(slug));
+  });
+}
+
+function totalUniqueSlugs() {
+  const all = new Set();
+  DATA.sections.forEach(function(s) {
+    s.slugs.forEach(function(slug) { all.add(slug); });
+  });
+  return all;
+}
+
+function updateProgress() {
+  const all = totalUniqueSlugs();
+  let caught = 0;
+  all.forEach(function(slug) { if (isCaught(slug)) caught++; });
+  const total = all.size;
+  const pct = total ? Math.round((caught / total) * 100) : 0;
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('progressText').textContent = caught + ' / ' + total + ' caught (' + pct + '%)';
+
+  DATA.sections.forEach(function(s) {
+    let c = 0;
+    s.slugs.forEach(function(slug) { if (isCaught(slug)) c++; });
+    const el = document.getElementById('count-' + s.id);
+    if (el) el.textContent = c + ' / ' + s.slugs.length;
+  });
+}
+
+function buildSection(section) {
+  const wrap = document.createElement('div');
+  wrap.className = 'section';
+  wrap.id = 'section-' + section.id;
+
+  const header = document.createElement('div');
+  header.className = 'section-header';
+  header.innerHTML =
+    '<h2>' + section.label + '</h2>' +
+    '<div style="display:flex;align-items:center;">' +
+      '<span class="count" id="count-' + section.id + '">0 / ' + section.slugs.length + '</span>' +
+      '<span class="chevron">&#9662;</span>' +
+    '</div>';
+  header.addEventListener('click', function() {
+    wrap.classList.toggle('collapsed');
+  });
+  wrap.appendChild(header);
+
+  const grid = document.createElement('div');
+  grid.className = 'grid';
+
+  section.slugs.forEach(function(slug, idx) {
+    const sp = DATA.species[slug];
+    if (!sp) return;
+    const card = document.createElement('div');
+    card.className = 'card' + (isCaught(slug) ? ' caught' : '');
+    card.dataset.slug = slug;
+    card.dataset.name = sp.n.toLowerCase();
+    card.dataset.version = sp.v || '';
+    var badgeHtml = '';
+    if (sp.v === 'sword') badgeHtml = '<span class="badge sword">SW</span>';
+    else if (sp.v === 'shield') badgeHtml = '<span class="badge shield">SH</span>';
+    else if (sp.v === 'split') badgeHtml = '<span class="badge split">SW/SH</span>';
+    card.innerHTML =
+      '<span class="num">#' + String(idx + 1).padStart(3, '0') + '</span>' +
+      '<span class="check"></span>' +
+      '<img src="' + sp.i + '" alt="' + sp.n + '" loading="lazy">' +
+      '<div class="name">' + sp.n + '</div>' +
+      badgeHtml;
+    card.addEventListener('click', function() { toggleCaught(slug); });
+    grid.appendChild(card);
+  });
+
+  wrap.appendChild(grid);
+  return wrap;
+}
+
+function render() {
+  const main = document.getElementById('main');
+  main.innerHTML = '';
+  DATA.sections.forEach(function(section) {
+    main.appendChild(buildSection(section));
+  });
+  updateProgress();
+}
+
+function applyFilters() {
+  const q = document.getElementById('searchBox').value.trim().toLowerCase();
+  const mode = document.getElementById('filterSelect').value;
+  document.querySelectorAll('.card').forEach(function(card) {
+    const matchesText = !q || card.dataset.name.indexOf(q) !== -1;
+    const caught = card.classList.contains('caught');
+    let matchesMode = true;
+    if (mode === 'caught') matchesMode = caught;
+    if (mode === 'uncaught') matchesMode = !caught;
+    if (mode === 'sword') matchesMode = card.dataset.version === 'sword';
+    if (mode === 'shield') matchesMode = card.dataset.version === 'shield';
+    card.classList.toggle('hidden', !(matchesText && matchesMode));
+  });
+}
+
+document.getElementById('searchBox').addEventListener('input', applyFilters);
+document.getElementById('filterSelect').addEventListener('change', applyFilters);
+document.getElementById('resetBtn').addEventListener('click', function() {
+  if (confirm('Reset all catch progress for Sword & Shield? This cannot be undone.')) {
+    state = {};
+    saveState();
+    render();
+    applyFilters();
+  }
+});
+
+render();
+
+// re-apply filters after any toggle since caught/uncaught filter depends on state
+const origToggle = toggleCaught;
+toggleCaught = function(slug) {
+  origToggle(slug);
+  applyFilters();
+};
+</script>
+
+</body>
+</html>
