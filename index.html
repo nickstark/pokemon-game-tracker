@@ -77,6 +77,11 @@
     opacity: 0.9;
     margin-top: 2px;
   }
+  .header-btns {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+  }
   .game-switch-btn {
     background: rgba(255,255,255,0.18);
     border: 1px solid rgba(255,255,255,0.35);
@@ -168,7 +173,7 @@
     border: 1px solid var(--border);
     background: var(--card-bg);
     color: var(--text);
-    font-size: 0.9rem;
+    font-size: 16px;
     width: 100%;
   }
   .controls input[type="search"]::-webkit-search-cancel-button {
@@ -329,16 +334,6 @@
   .badge.shield { background: #a54a4a; }
   .badge.split { background: #8a6dbb; }
 
-  .chain-dot {
-    position: absolute;
-    bottom: 3px;
-    right: 3px;
-    font-size: 0.68rem;
-    line-height: 1;
-    color: var(--text-dim);
-    opacity: 0.7;
-  }
-
   .modal-overlay {
     display: none;
     position: fixed;
@@ -467,6 +462,51 @@
     margin-bottom: 10px;
   }
 
+  .history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .history-group-label {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin: 14px 0 6px;
+  }
+  .history-group-label:first-child { margin-top: 0; }
+  .history-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 4px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .history-row:active { background: var(--chip-bg); }
+  .history-row img {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+    flex-shrink: 0;
+  }
+  .history-row .history-name {
+    flex: 1;
+    font-size: 0.88rem;
+  }
+  .history-row .history-time {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+  .history-empty {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    padding: 20px 0;
+  }
+
   footer {
     text-align: center;
     font-size: 0.72rem;
@@ -481,9 +521,21 @@
     border-radius: 7px;
     padding: 5px 12px;
     font-size: 0.75rem;
-    margin-top: 8px;
     cursor: pointer;
   }
+  .footer-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 10px;
+  }
+  .detail-db-link {
+    font-size: 0.8rem;
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .detail-db-link:active { opacity: 0.7; }
 </style>
 </head>
 <body>
@@ -494,7 +546,10 @@
       <h1 id="gameTitle">Pokedex Tracker</h1>
       <div class="sub" id="gameSub"></div>
     </div>
-    <button class="game-switch-btn" id="gameSwitchBtn">Switch game ▾</button>
+    <div class="header-btns">
+      <button class="game-switch-btn" id="historyBtn">History</button>
+      <button class="game-switch-btn" id="gameSwitchBtn">Switch game ▾</button>
+    </div>
   </div>
   <div class="game-menu" id="gameMenu"></div>
   <div class="progress-wrap"><div class="progress-bar" id="progressBar" style="width:0%"></div></div>
@@ -526,6 +581,7 @@
     <div class="detail-main">
       <img id="detailImg" src="" alt="">
       <button class="detail-toggle-btn" id="detailToggleBtn">Mark as caught</button>
+      <a id="detailDbLink" class="detail-db-link" href="#" target="_blank" rel="noopener">View on PokemonDB &#8599;</a>
     </div>
     <div id="detailEvoSection" class="detail-evo-section">
       <div class="detail-evo-label">Evolution line</div>
@@ -534,10 +590,25 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="historyModalOverlay">
+  <div class="modal-sheet">
+    <div class="modal-header">
+      <h3>Catch history</h3>
+      <button class="modal-close" id="historyModalClose">&times;</button>
+    </div>
+    <div class="history-list" id="historyList"></div>
+  </div>
+</div>
+
 <footer>
   Data &amp; sprites from <a href="https://pokemondb.net/" target="_blank" rel="noopener">pokemondb.net</a>. Progress is saved on this device only, separately per game.
   <br>
-  <button class="reset-btn" id="resetBtn">Reset progress for this game</button>
+  <div class="footer-actions">
+    <button class="reset-btn" id="resetBtn">Reset progress for this game</button>
+    <button class="reset-btn" id="exportBtn">Export backup</button>
+    <button class="reset-btn" id="importBtn">Import backup</button>
+  </div>
+  <input type="file" id="importFile" accept="application/json" style="display:none">
 </footer>
 
 <script>
@@ -592,7 +663,7 @@ function isCaught(slug) {
 
 function toggleCaught(slug) {
   const map = currentCaughtMap();
-  if (map[slug]) delete map[slug]; else map[slug] = true;
+  if (map[slug]) delete map[slug]; else map[slug] = Date.now();
   saveStore(store);
   updateCardEls(slug);
   updateProgress();
@@ -665,13 +736,12 @@ function buildSection(game, section) {
     if (sp.v === 'sword') badgeHtml = '<span class="badge sword">SW</span>';
     else if (sp.v === 'shield') badgeHtml = '<span class="badge shield">SH</span>';
     else if (sp.v === 'split') badgeHtml = '<span class="badge split">SW/SH</span>';
-    const chainHtml = sp.c ? '<span class="chain-dot" title="Has an evolution line">&#9906;</span>' : '';
     card.innerHTML =
       '<span class="num">#' + String(displayNum).padStart(3, '0') + '</span>' +
       '<span class="check"></span>' +
       '<img src="' + sp.i + '" alt="' + sp.n + '" loading="lazy" onerror="this.style.visibility=\'hidden\'">' +
       '<div class="name">' + sp.n + '</div>' +
-      badgeHtml + chainHtml;
+      badgeHtml;
     card.addEventListener('click', function() { openDetailSheet(slug); });
     grid.appendChild(card);
   });
@@ -691,6 +761,7 @@ function renderDetailSheet() {
   document.getElementById('detailName').textContent = sp.n;
   document.getElementById('detailImg').src = sp.i;
   document.getElementById('detailImg').alt = sp.n;
+  document.getElementById('detailDbLink').href = 'https://pokemondb.net/pokedex/' + openSlug;
   document.getElementById('detailImg').className = isCaught(openSlug) ? 'caught' : '';
 
   const toggleBtn = document.getElementById('detailToggleBtn');
@@ -802,6 +873,92 @@ document.getElementById('gameSwitchBtn').addEventListener('click', function() {
   document.getElementById('gameMenu').classList.toggle('open');
 });
 
+// ---------- History ----------
+function formatHistoryGroupLabel(ts) {
+  const d = new Date(ts);
+  const now = new Date();
+  const startOfDay = function(dt) { return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()).getTime(); };
+  const diffDays = Math.round((startOfDay(now) - startOfDay(d)) / 86400000);
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays > 1 && diffDays < 7) return d.toLocaleDateString(undefined, { weekday: 'long' });
+  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function renderHistory() {
+  const game = currentGame();
+  const map = currentCaughtMap();
+  const list = document.getElementById('historyList');
+  list.innerHTML = '';
+
+  const entries = Object.keys(map)
+    .filter(function(slug) { return game.species[slug]; })
+    .map(function(slug) { return { slug: slug, ts: map[slug] }; });
+
+  if (entries.length === 0) {
+    list.innerHTML = '<div class="history-empty">No catches logged yet for ' + game.label + '.</div>';
+    return;
+  }
+
+  const timed = entries.filter(function(e) { return typeof e.ts === 'number'; })
+    .sort(function(a, b) { return b.ts - a.ts; });
+  const undated = entries.filter(function(e) { return typeof e.ts !== 'number'; })
+    .sort(function(a, b) { return a.slug.localeCompare(b.slug); });
+
+  let lastLabel = null;
+  timed.forEach(function(entry) {
+    const label = formatHistoryGroupLabel(entry.ts);
+    if (label !== lastLabel) {
+      const groupEl = document.createElement('div');
+      groupEl.className = 'history-group-label';
+      groupEl.textContent = label;
+      list.appendChild(groupEl);
+      lastLabel = label;
+    }
+    list.appendChild(buildHistoryRow(entry.slug, game, entry.ts));
+  });
+
+  if (undated.length > 0) {
+    const groupEl = document.createElement('div');
+    groupEl.className = 'history-group-label';
+    groupEl.textContent = 'Date unknown';
+    list.appendChild(groupEl);
+    undated.forEach(function(entry) {
+      list.appendChild(buildHistoryRow(entry.slug, game, null));
+    });
+  }
+}
+
+function buildHistoryRow(slug, game, ts) {
+  const sp = game.species[slug];
+  const row = document.createElement('div');
+  row.className = 'history-row';
+  const timeStr = ts ? new Date(ts).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : '';
+  row.innerHTML =
+    '<img src="' + sp.i + '" alt="' + sp.n + '" onerror="this.style.visibility=\'hidden\'">' +
+    '<span class="history-name">' + sp.n + '</span>' +
+    '<span class="history-time">' + timeStr + '</span>';
+  row.addEventListener('click', function() {
+    closeHistoryModal();
+    openDetailSheet(slug);
+  });
+  return row;
+}
+
+function openHistoryModal() {
+  renderHistory();
+  document.getElementById('historyModalOverlay').classList.add('open');
+}
+function closeHistoryModal() {
+  document.getElementById('historyModalOverlay').classList.remove('open');
+}
+
+document.getElementById('historyBtn').addEventListener('click', openHistoryModal);
+document.getElementById('historyModalClose').addEventListener('click', closeHistoryModal);
+document.getElementById('historyModalOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeHistoryModal();
+});
+
 document.getElementById('searchBox').addEventListener('input', function() {
   document.getElementById('searchClear').classList.toggle('visible', this.value.length > 0);
   applyFilters();
@@ -828,6 +985,70 @@ document.getElementById('resetBtn').addEventListener('click', function() {
     saveStore(store);
     render();
   }
+});
+
+document.getElementById('exportBtn').addEventListener('click', function() {
+  const payload = {
+    exportedFrom: 'pokedex-tracker',
+    exportedAt: new Date().toISOString(),
+    schemaVersion: store.schemaVersion || 2,
+    currentGame: store.currentGame,
+    games: store.games
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dateStr = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = 'pokedex-tracker-backup-' + dateStr + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('importBtn').addEventListener('click', function() {
+  document.getElementById('importFile').click();
+});
+
+document.getElementById('importFile').addEventListener('change', function(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function() {
+    let data;
+    try {
+      data = JSON.parse(reader.result);
+    } catch (err) {
+      alert('That file is not valid JSON.');
+      e.target.value = '';
+      return;
+    }
+    if (!data || typeof data !== 'object' || typeof data.games !== 'object') {
+      alert('That file does not look like a Pokedex Tracker backup.');
+      e.target.value = '';
+      return;
+    }
+    const gameNames = Object.keys(data.games).map(function(gid) {
+      return (GAMES[gid] && GAMES[gid].label) || gid;
+    }).join(', ') || '(none)';
+    if (!confirm('Import backup and replace current progress for: ' + gameNames + '? This cannot be undone.')) {
+      e.target.value = '';
+      return;
+    }
+    store.games = data.games;
+    if (data.currentGame && GAMES[data.currentGame]) {
+      store.currentGame = data.currentGame;
+    }
+    saveStore(store);
+    render();
+    e.target.value = '';
+  };
+  reader.onerror = function() {
+    alert('Could not read that file.');
+    e.target.value = '';
+  };
+  reader.readAsText(file);
 });
 
 render();
