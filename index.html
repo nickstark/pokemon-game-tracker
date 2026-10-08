@@ -507,6 +507,26 @@
     padding: 20px 0;
   }
 
+  #searchFab {
+    position: fixed;
+    right: 18px;
+    bottom: 22px;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: none;
+    background: var(--header-bg);
+    color: #fff;
+    font-size: 1.3rem;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+    cursor: pointer;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #searchFab:active { opacity: 0.85; }
+
   footer {
     text-align: center;
     font-size: 0.72rem;
@@ -568,6 +588,8 @@
 
 <main id="main"></main>
 
+<button id="searchFab" aria-label="Clear and focus search" title="Clear and focus search">&#128269;</button>
+
 <div class="modal-overlay" id="detailModalOverlay">
   <div class="modal-sheet">
     <div class="modal-header">
@@ -577,7 +599,7 @@
     <div class="detail-main">
       <img id="detailImg" src="" alt="">
       <button class="detail-toggle-btn" id="detailToggleBtn">Mark as caught</button>
-      <a id="detailDbLink" class="detail-db-link" href="#" target="_blank" rel="noopener">View on PokemonDB &#8599;</a>
+      <a id="detailDbLink" class="detail-db-link" href="#" target="_blank" rel="noopener">View on Serebii &#8599;</a>
     </div>
     <div id="detailEvoSection" class="detail-evo-section">
       <div class="detail-evo-label">Evolution line</div>
@@ -756,7 +778,7 @@ function renderDetailSheet() {
   document.getElementById('detailName').textContent = sp.n;
   document.getElementById('detailImg').src = sp.i;
   document.getElementById('detailImg').alt = sp.n;
-  document.getElementById('detailDbLink').href = 'https://pokemondb.net/pokedex/' + openSlug;
+  document.getElementById('detailDbLink').href = 'https://www.serebii.net/pokemon/' + openSlug + '/';
   document.getElementById('detailImg').className = isCaught(openSlug) ? 'caught' : '';
 
   const toggleBtn = document.getElementById('detailToggleBtn');
@@ -848,8 +870,10 @@ function applyFilters() {
     const matchesText = !q || card.dataset.name.indexOf(q) !== -1;
     const caught = card.classList.contains('caught');
     let matchesMode = true;
-    if (viewMode === 'caught') matchesMode = caught;
-    if (viewMode === 'uncaught') matchesMode = !caught;
+    if (!q) {
+      if (viewMode === 'caught') matchesMode = caught;
+      if (viewMode === 'uncaught') matchesMode = !caught;
+    }
     card.classList.toggle('hidden', !(matchesText && matchesMode));
   });
 }
@@ -972,6 +996,19 @@ document.getElementById('searchClear').addEventListener('click', function() {
   box.focus();
   this.classList.remove('visible');
   applyFilters();
+});
+
+document.getElementById('searchFab').addEventListener('click', function() {
+  const box = document.getElementById('searchBox');
+  box.value = '';
+  document.getElementById('searchClear').classList.remove('visible');
+  applyFilters();
+  box.focus();
+  // Focusing the input can make mobile browsers auto-scroll it into view above
+  // the keyboard, which cancels a scroll-to-top called beforehand. Re-assert
+  // the jump after the keyboard/focus settles so it reliably lands at top.
+  window.scrollTo(0, 0);
+  setTimeout(function() { window.scrollTo(0, 0); }, 350);
 });
 
 document.getElementById('viewToggleBtn').addEventListener('click', function() {
